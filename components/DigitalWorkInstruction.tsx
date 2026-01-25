@@ -5,9 +5,10 @@ import { WorkInstruction, ImageOverlay } from '../types';
 interface DigitalWorkInstructionProps {
     instruction: WorkInstruction;
     onClose: () => void;
+    onGoToControlPlan?: (cpId: string) => void;
 }
 
-export const DigitalWorkInstruction: React.FC<DigitalWorkInstructionProps> = ({ instruction, onClose }) => {
+export const DigitalWorkInstruction: React.FC<DigitalWorkInstructionProps> = ({ instruction, onClose, onGoToControlPlan }) => {
     
     // Helper to render individual overlays
     const renderOverlay = (overlay: ImageOverlay) => {
@@ -114,6 +115,15 @@ export const DigitalWorkInstruction: React.FC<DigitalWorkInstructionProps> = ({ 
                         </div>
                     </div>
                 </div>
+                {instruction.linked_cp_id && onGoToControlPlan && (
+                    <button 
+                        onClick={() => onGoToControlPlan(instruction.linked_cp_id)}
+                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded text-sm font-bold shadow-sm transition-colors flex items-center"
+                    >
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                        View Control Plan
+                    </button>
+                )}
             </div>
 
             {/* 2. Scrollable Body: Vertical list of cards */}

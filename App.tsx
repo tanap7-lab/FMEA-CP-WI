@@ -1,344 +1,345 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { ProjectDashboard } from './components/ProjectDashboard';
-import { FmeaTable, RpnBadge, ApBadge } from './components/FmeaTable';
-import { TraceabilityMatrix } from './components/TraceabilityMatrix';
-import { StructureVisualizer } from './components/StructureVisualizer';
-import { ExplodedView } from './components/ExplodedView';
-import { ProcessFlowVisualizer } from './components/ProcessFlowVisualizer';
 import { ProjectSettings } from './components/ProjectSettings';
 import { AdminSettings } from './components/AdminSettings';
+import { FmeaTable, RpnBadge, ApBadge } from './components/FmeaTable';
+import { ProcessFlowVisualizer } from './components/ProcessFlowVisualizer';
+import { StructureVisualizer } from './components/StructureVisualizer';
+import { ExplodedView } from './components/ExplodedView';
+import { TraceabilityMatrix } from './components/TraceabilityMatrix';
 import { DigitalWorkInstruction } from './components/DigitalWorkInstruction';
+import { WorkInstructionEditor } from './components/WorkInstructionEditor';
+
 import { 
-  ProjectMaster, DfmeaItem, PfmeaItem, ControlPlanItem, StructureElement, ViewMode,
-  AppState, ProjectDiagram, ExplodedViewBox, RiskSettings, WorkInstruction
+  ProjectMaster, DfmeaItem, PfmeaItem, ControlPlanItem, StructureElement, 
+  RiskSettings, WorkInstruction, ViewMode, ProjectDiagram, ExplodedViewBox 
 } from './types';
 import { 
-    MOCK_PROJECTS, MOCK_DFMEA, MOCK_PFMEA, MOCK_CONTROL_PLAN, 
-    MOCK_STRUCTURE_ELEMENTS, DEFAULT_RISK_SETTINGS, 
-    MOCK_BUSINESS_AREAS, MOCK_LOCATIONS, MOCK_WORK_INSTRUCTIONS,
-    MOCK_BUSINESS_AREA_LOCATION_MAP
+  MOCK_PROJECTS, MOCK_DFMEA, MOCK_PFMEA, MOCK_CONTROL_PLAN, 
+  MOCK_STRUCTURE_ELEMENTS, MOCK_WORK_INSTRUCTIONS, DEFAULT_RISK_SETTINGS,
+  MOCK_BUSINESS_AREAS, MOCK_LOCATIONS, MOCK_BUSINESS_AREA_LOCATION_MAP
 } from './constants';
 
-export default function App() {
-  // --- State ---
-  const [state, setState] = useState<AppState>({
+interface AppState {
+    currentView: ViewMode;
+    selectedProjectId: string | null;
+    projects: ProjectMaster[];
+    structureElements: StructureElement[];
+    dfmeaItems: DfmeaItem[];
+    pfmeaItems: PfmeaItem[];
+    controlPlanItems: ControlPlanItem[];
+    workInstructions: WorkInstruction[];
+    projectDiagrams: Record<string, ProjectDiagram[]>;
+    riskSettings: RiskSettings;
+    businessAreas: string[];
+    locations: string[];
+    businessAreaLocationMap: Record<string, string[]>;
+}
+
+const initialState: AppState = {
+    currentView: 'DASHBOARD',
+    selectedProjectId: null,
     projects: MOCK_PROJECTS,
     structureElements: MOCK_STRUCTURE_ELEMENTS,
     dfmeaItems: MOCK_DFMEA,
     pfmeaItems: MOCK_PFMEA,
     controlPlanItems: MOCK_CONTROL_PLAN,
-    projectDiagrams: {},
     workInstructions: MOCK_WORK_INSTRUCTIONS,
-    selectedProjectId: null,
-    currentView: 'DASHBOARD',
+    projectDiagrams: {},
     riskSettings: DEFAULT_RISK_SETTINGS,
     businessAreas: MOCK_BUSINESS_AREAS,
     locations: MOCK_LOCATIONS,
     businessAreaLocationMap: MOCK_BUSINESS_AREA_LOCATION_MAP
-  });
+};
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<any>(null); // Generic holder for edit form
-  const [selectedStructureId, setSelectedStructureId] = useState<string | null>(null);
-  const [selectedProcessStep, setSelectedProcessStep] = useState<number | null>(null);
-  const [modalType, setModalType] = useState<'PROJECT' | 'STRUCTURE' | 'DFMEA' | 'PFMEA' | 'CP' | 'PROCESS_STEP' | null>(null);
+function App() {
+  const [state, setState] = useState<AppState>(initialState);
   
-  // State for Work Instruction View
+  // UI State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalType, setModalType] = useState<'STRUCTURE' | 'DFMEA' | 'PFMEA' | 'PROCESS_STEP' | null>(null);
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [selectedStructureId, setSelectedStructureId] = useState<string | null>(null);
+  const [selectedDfmeaId, setSelectedDfmeaId] = useState<string | null>(null);
+  const [selectedProcessStep, setSelectedProcessStep] = useState<number | null>(null);
+  const [selectedDiagramId, setSelectedDiagramId] = useState<string | null>(null);
+  const [pendingDiagramDrop, setPendingDiagramDrop] = useState<{diagramId: string, x: number, y: number} | null>(null);
+  
+  // Work Instruction UI
+  const [showWiEditor, setShowWiEditor] = useState(false);
   const [viewingWorkInstruction, setViewingWorkInstruction] = useState<WorkInstruction | null>(null);
 
-  // State for pending new element drop on diagram
-  const [pendingDiagramDrop, setPendingDiagramDrop] = useState<{x: number, y: number} | null>(null);
-
-  // --- Derived State ---
-  const activeProject = state.projects.find(p => p.project_id === state.selectedProjectId);
-  
-  // Filter structure elements by project
-  const projectStructureElements = useMemo(() => 
-    state.structureElements.filter(e => e.project_id === state.selectedProjectId),
-    [state.structureElements, state.selectedProjectId]
+  const activeProject = state.selectedProjectId ? state.projects.find(p => p.project_id === state.selectedProjectId) : null;
+  const projectStructureElements = state.structureElements.filter(e => e.project_id === state.selectedProjectId);
+  const projectDiagrams = state.selectedProjectId ? (state.projectDiagrams[state.selectedProjectId] || []) : [];
+  const currentDiagrams = projectDiagrams;
+  const activeDiagram = currentDiagrams.find(d => d.id === selectedDiagramId) || null;
+  const filteredDfmea = state.dfmeaItems.filter(i => i.project_id === state.selectedProjectId && (!selectedStructureId || i.structure_element_id === selectedStructureId));
+  const filteredPfmea = state.pfmeaItems.filter(i => i.project_id === state.selectedProjectId && (selectedProcessStep === null || i.process_step_number === selectedProcessStep));
+  const projectPfmeaItems = state.pfmeaItems.filter(i => i.project_id === state.selectedProjectId);
+  const projectControlPlanItems = state.controlPlanItems.filter(cp => 
+      projectPfmeaItems.some(pf => pf.pfmea_id === cp.pfmea_link_id)
   );
 
-  // Get current project diagram or default
-  const currentDiagram: ProjectDiagram = (state.selectedProjectId && state.projectDiagrams[state.selectedProjectId]) || {
-    imageUrl: null,
-    boxes: []
-  };
-
-  // Filter DFMEA items by project AND structure selection
-  const filteredDfmea = useMemo(() => {
-    let items = state.dfmeaItems.filter(i => i.project_id === state.selectedProjectId);
-    if (selectedStructureId) {
-      items = items.filter(i => i.structure_element_id === selectedStructureId);
-    }
-    return items;
-  }, [state.dfmeaItems, state.selectedProjectId, selectedStructureId]);
-  
-  const filteredPfmea = useMemo(() => {
-    let items = state.pfmeaItems.filter(i => i.project_id === state.selectedProjectId);
-    if (selectedProcessStep !== null) {
-        items = items.filter(i => i.process_step_number === selectedProcessStep);
-    }
-    return items.sort((a,b) => a.process_step_number - b.process_step_number);
-  }, [state.pfmeaItems, state.selectedProjectId, selectedProcessStep]);
-  
-  const filteredControlPlan = useMemo(() => {
-    // Get all PFMEA IDs for current project
-    const pfmeaIds = filteredPfmea.map(p => p.pfmea_id);
-    return state.controlPlanItems.filter(c => pfmeaIds.includes(c.pfmea_link_id));
-  }, [state.controlPlanItems, filteredPfmea]);
-
-
-  // --- Helper Functions ---
   const getActionPriority = (s: number, o: number, d: number): 'H' | 'M' | 'L' => {
-    const rules = state.riskSettings.apLogic || [];
-    
-    // Evaluate rules in order
-    for (const rule of rules) {
-        if (
-            s >= rule.sMin && s <= rule.sMax &&
-            o >= rule.oMin && o <= rule.oMax &&
-            d >= rule.dMin && d <= rule.dMax
-        ) {
-            return rule.result;
-        }
-    }
-    
-    // Default to Low if no rule matches
-    return 'L';
+      for (const rule of state.riskSettings.apLogic) {
+          if (s >= rule.sMin && s <= rule.sMax && 
+              o >= rule.oMin && o <= rule.oMax && 
+              d >= rule.dMin && d <= rule.dMax) {
+              return rule.result;
+          }
+      }
+      return 'L';
   };
 
-  // Failure Chain Helpers
-  const getStructureElement = (id: string | null) => projectStructureElements.find(e => e.element_id === id);
+  const SearchBar = () => (
+      <div className="relative">
+          <input type="text" placeholder="Search..." className="pl-8 pr-3 py-1.5 text-sm border rounded-full bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-100 outline-none transition-all w-48 focus:w-64" />
+          <svg className="w-4 h-4 text-slate-400 absolute left-2.5 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+      </div>
+  );
+
+  const handleNavigate = (view: ViewMode) => {
+    setState(prev => ({ ...prev, currentView: view }));
+  };
+
+  const handleSelectProject = (id: string) => {
+      setState(prev => ({ ...prev, selectedProjectId: id, currentView: 'DFMEA' }));
+  };
+
+  const handleAddProject = (project: ProjectMaster) => {
+      setState(prev => ({ ...prev, projects: [...prev.projects, project] }));
+  };
+
+  const handleDeleteProject = (id: string) => {
+      if(window.confirm("Are you sure? This will delete all project data.")) {
+          setState(prev => ({ ...prev, projects: prev.projects.filter(p => p.project_id !== id) }));
+      }
+  };
+
+  const handleDeleteItem = (type: 'STRUCTURE' | 'DFMEA' | 'PFMEA', id: string) => {
+      if(!window.confirm("Delete this item?")) return;
+      if (type === 'STRUCTURE') {
+          setState(prev => ({ ...prev, structureElements: prev.structureElements.filter(e => e.element_id !== id) }));
+      } else if (type === 'DFMEA') {
+          setState(prev => ({ ...prev, dfmeaItems: prev.dfmeaItems.filter(e => e.dfmea_id !== id) }));
+      } else if (type === 'PFMEA') {
+          setState(prev => ({ ...prev, pfmeaItems: prev.pfmeaItems.filter(e => e.pfmea_id !== id) }));
+      }
+  };
+
+  // --- Helper Functions used in renderContent ---
+  const getHigherLevelFailures = (structureId: string | null) => {
+      if (!structureId) return [];
+      const currentElement = state.structureElements.find(e => e.element_id === structureId);
+      if (!currentElement || !currentElement.parent_element_id) return [];
+      
+      // Get failures from parent element
+      return state.dfmeaItems
+          .filter(i => i.structure_element_id === currentElement.parent_element_id)
+          .map(i => ({ value: i.failure_mode_id || i.dfmea_id, label: `${i.failure_mode} (Parent)`, text: i.failure_mode }));
+  };
+
+  const getLowerLevelFailures = (structureId: string | null) => {
+      if (!structureId) return [];
+      // Get children elements
+      const childElements = state.structureElements.filter(e => e.parent_element_id === structureId);
+      const childIds = childElements.map(e => e.element_id);
+      
+      return state.dfmeaItems
+          .filter(i => childIds.includes(i.structure_element_id))
+          .map(i => ({ value: i.failure_mode_id || i.dfmea_id, label: `${i.failure_mode} (Child: ${state.structureElements.find(e => e.element_id === i.structure_element_id)?.element_title})`, text: i.failure_mode }));
+  };
+
+  const getExistingFunctions = (structureId: string | null) => {
+      // Suggest functions from same category
+      return Array.from(new Set(state.dfmeaItems.map(d => d.item_function)));
+  };
+
+  const handleUpdateStructureElement = (updated: StructureElement) => {
+      setState(prev => ({
+          ...prev,
+          structureElements: prev.structureElements.map(e => e.element_id === updated.element_id ? updated : e)
+      }));
+  };
   
-  const getHigherLevelFailures = (currentStructId: string | null) => {
-    if (!currentStructId) return [];
-    const currentEl = getStructureElement(currentStructId);
-    if (!currentEl || !currentEl.parent_element_id) return [];
-    
-    // Find all DFMEA items belonging to the parent element
-    const parentItems = state.dfmeaItems.filter(i => i.structure_element_id === currentEl.parent_element_id);
-    // Return unique failure modes
-    return Array.from(new Set(parentItems.map(i => i.failure_mode))).map(mode => {
-        const item = parentItems.find(i => i.failure_mode === mode);
-        return { label: `[Parent: ${getStructureElement(currentEl.parent_element_id)?.element_title}] ${mode}`, value: item?.failure_mode_id || mode, text: mode };
-    });
+  // Diagram Handlers
+  const handleAddDiagram = () => {
+      if (!state.selectedProjectId) return;
+      const newDiagram: ProjectDiagram = { id: `DIAG-${Date.now()}`, projectId: state.selectedProjectId, title: 'New Diagram', boxes: [] };
+      setState(prev => ({
+          ...prev,
+          projectDiagrams: {
+              ...prev.projectDiagrams,
+              [state.selectedProjectId!]: [...(prev.projectDiagrams[state.selectedProjectId!] || []), newDiagram]
+          }
+      }));
+      setSelectedDiagramId(newDiagram.id);
   };
-
-  const getLowerLevelFailures = (currentStructId: string | null) => {
-      if (!currentStructId) return [];
-      
-      // Find children elements
-      const childrenEls = projectStructureElements.filter(e => e.parent_element_id === currentStructId);
-      const childrenIds = childrenEls.map(e => e.element_id);
-      
-      const childItems = state.dfmeaItems.filter(i => i.structure_element_id && childrenIds.includes(i.structure_element_id));
-       // Return unique failure modes
-       return Array.from(new Set(childItems.map(i => i.failure_mode))).map(mode => {
-        const item = childItems.find(i => i.failure_mode === mode);
-        const el = getStructureElement(item?.structure_element_id || null);
-        return { label: `[Child: ${el?.element_title}] ${mode}`, value: item?.failure_mode_id || mode, text: mode };
-    });
+  
+  const handleDeleteDiagram = (id: string) => {
+      if (!state.selectedProjectId) return;
+      setState(prev => ({
+          ...prev,
+          projectDiagrams: {
+              ...prev.projectDiagrams,
+              [state.selectedProjectId!]: (prev.projectDiagrams[state.selectedProjectId!] || []).filter(d => d.id !== id)
+          }
+      }));
+      if (selectedDiagramId === id) setSelectedDiagramId(null);
   };
-
-  const getExistingFunctions = (currentStructId: string | null) => {
-      const items = state.dfmeaItems.filter(i => i.structure_element_id === currentStructId);
-      return Array.from(new Set(items.map(i => i.item_function)));
+  
+  const handleRenameDiagram = (id: string, newTitle: string) => {
+      if (!state.selectedProjectId) return;
+      setState(prev => ({
+          ...prev,
+          projectDiagrams: {
+              ...prev.projectDiagrams,
+              [state.selectedProjectId!]: (prev.projectDiagrams[state.selectedProjectId!] || []).map(d => d.id === id ? { ...d, title: newTitle } : d)
+          }
+      }));
   };
-
-  const handleAddFailureModeFromItem = (item: DfmeaItem) => {
-      setEditingItem({
-          structure_element_id: item.structure_element_id,
-          item_function: item.item_function,
-          requirement: item.requirement,
-          // Clear specific failure details
-          dfmea_id: null,
-          failure_mode: '',
-          failure_mode_id: null,
-          effect_of_failure: '',
-          potential_cause: '',
-          severity_score: 1, 
-          occurrence_score: 1,
-          detection_score: 1,
-          classification: 'None'
-      });
-      setModalType('DFMEA');
+  
+  const handleUploadImage = (diagramId: string, dataUrl: string) => {
+      if (!state.selectedProjectId) return;
+      setState(prev => ({
+          ...prev,
+          projectDiagrams: {
+              ...prev.projectDiagrams,
+              [state.selectedProjectId!]: (prev.projectDiagrams[state.selectedProjectId!] || []).map(d => d.id === diagramId ? { ...d, imageUrl: dataUrl } : d)
+          }
+      }));
+  };
+  
+  const handleAddBox = (diagramId: string, box: ExplodedViewBox) => {
+      if (!state.selectedProjectId) return;
+      setState(prev => ({
+          ...prev,
+          projectDiagrams: {
+              ...prev.projectDiagrams,
+              [state.selectedProjectId!]: (prev.projectDiagrams[state.selectedProjectId!] || []).map(d => d.id === diagramId ? { ...d, boxes: [...d.boxes, box] } : d)
+          }
+      }));
+  };
+  
+  const handleRemoveBox = (diagramId: string, boxId: string) => {
+      if (!state.selectedProjectId) return;
+      setState(prev => ({
+          ...prev,
+          projectDiagrams: {
+              ...prev.projectDiagrams,
+              [state.selectedProjectId!]: (prev.projectDiagrams[state.selectedProjectId!] || []).map(d => d.id === diagramId ? { ...d, boxes: d.boxes.filter(b => b.id !== boxId) } : d)
+          }
+      }));
+  };
+  
+  const handleBoxDropNew = (diagramId: string, x: number, y: number) => {
+      setPendingDiagramDrop({ diagramId, x, y });
+      setEditingItem({}); 
+      setModalType('STRUCTURE'); 
       setIsModalOpen(true);
   };
   
   const handleAddSuggestedElements = (elements: Partial<StructureElement>[]) => {
       if (!state.selectedProjectId) return;
-      
-      const newElements: StructureElement[] = elements.map((el, idx) => ({
-          element_id: `STR-${Date.now()}-${idx}`,
+      const newElements = elements.map(e => ({
+          ...e,
+          element_id: `STR-${Date.now()}-${Math.random()}`,
           project_id: state.selectedProjectId!,
-          element_title: el.element_title || 'New Element',
-          description: el.description || '',
-          specification: el.specification || '',
-          category: (el.category as any) || 'Component',
-          parent_element_id: null
-      }));
-
+          element_title: e.element_title || 'New Element',
+          category: e.category || 'Component'
+      } as StructureElement));
+      
       setState(prev => ({
           ...prev,
           structureElements: [...prev.structureElements, ...newElements]
       }));
   };
 
-  // --- Actions ---
-  const handleSelectProject = (id: string) => {
-    setState(prev => ({ ...prev, selectedProjectId: id, currentView: 'DFMEA' }));
-    setSelectedStructureId(null);
-    setSelectedProcessStep(null);
-  };
-
-  const handleNavigate = (view: ViewMode) => {
-    if (view === 'DASHBOARD') {
-      setState(prev => ({ ...prev, selectedProjectId: null, currentView: view }));
-    } else {
-      setState(prev => ({ ...prev, currentView: view }));
-    }
-  };
-
-  const handleAddProject = (project: ProjectMaster) => {
-    setState(prev => ({ ...prev, projects: [...prev.projects, project] }));
-  };
-  
-  const handleDeleteProject = (id: string) => {
-      if(window.confirm("Are you sure? This will hide linked FMEAs for this demo.")) {
-          setState(prev => ({...prev, projects: prev.projects.filter(p => p.project_id !== id)}));
-      }
-  }
-
-  // Diagram Actions
-  const handleUploadImage = (dataUrl: string) => {
-    if (!state.selectedProjectId) return;
-    setState(prev => ({
-        ...prev,
-        projectDiagrams: {
-            ...prev.projectDiagrams,
-            [prev.selectedProjectId!]: {
-                ...currentDiagram,
-                imageUrl: dataUrl
-            }
-        }
-    }));
-  };
-
-  const handleAddBox = (box: ExplodedViewBox) => {
-    if (!state.selectedProjectId) return;
-    setState(prev => ({
-        ...prev,
-        projectDiagrams: {
-            ...prev.projectDiagrams,
-            [prev.selectedProjectId!]: {
-                ...currentDiagram,
-                boxes: [...currentDiagram.boxes, box]
-            }
-        }
-    }));
-  };
-
-  const handleRemoveBox = (boxId: string) => {
-      if (!state.selectedProjectId) return;
-      setState(prev => ({
-        ...prev,
-        projectDiagrams: {
-            ...prev.projectDiagrams,
-            [prev.selectedProjectId!]: {
-                ...currentDiagram,
-                boxes: currentDiagram.boxes.filter(b => b.id !== boxId)
-            }
-        }
-    }));
-  };
-
-  const handleBoxDropNew = (x: number, y: number) => {
-      setPendingDiagramDrop({ x, y });
-      setEditingItem({});
-      setModalType('STRUCTURE');
+  const handleAddFailureModeFromItem = (item: DfmeaItem) => {
+      setEditingItem({ 
+          structure_element_id: item.structure_element_id,
+          item_function: item.item_function,
+          requirement: item.requirement
+      });
+      setModalType('DFMEA');
       setIsModalOpen(true);
   };
 
-  const handleUpdateStructureElement = (updatedElement: StructureElement) => {
-    setState(prev => ({
-      ...prev,
-      structureElements: prev.structureElements.map(e =>
-        e.element_id === updatedElement.element_id ? updatedElement : e
-      )
-    }));
-  };
-
+  // PFMEA Handlers
   const handleAddProcessStep = () => {
-      const maxStep = Math.max(0, ...state.pfmeaItems
-        .filter(i => i.project_id === state.selectedProjectId)
-        .map(i => i.process_step_number));
-      
-      setEditingItem({ process_step_number: maxStep + 10 });
+      setEditingItem({});
       setModalType('PROCESS_STEP');
       setIsModalOpen(true);
   };
 
   const handleEditProcessStep = (stepNumber: number) => {
-      // Find the first item with this step number to populate fields
-      const item = state.pfmeaItems.find(i => i.project_id === state.selectedProjectId && i.process_step_number === stepNumber);
-      if (item) {
-          setEditingItem({ ...item }); // We only care about step number and function/req
+      const stepItems = state.pfmeaItems.filter(i => i.project_id === state.selectedProjectId && i.process_step_number === stepNumber);
+      if (stepItems.length > 0) {
+          setEditingItem(stepItems[0]); // Use first item to edit shared step props
           setModalType('PROCESS_STEP');
           setIsModalOpen(true);
       }
   };
-  
+
   const handleDeleteProcessStep = (stepNumber: number) => {
-      if (!window.confirm(`Are you sure you want to delete Step ${stepNumber} and all its Failure Modes?`)) return;
-      
-      setState(prev => ({
-          ...prev,
-          pfmeaItems: prev.pfmeaItems.filter(i => 
-              // Keep item if it's NOT (current project AND matching step number)
-              !(i.project_id === state.selectedProjectId && i.process_step_number === stepNumber)
-          )
-      }));
-      
-      if (selectedProcessStep === stepNumber) setSelectedProcessStep(null);
-  };
-
-  // Generic Handlers for Form Submission
-  const handleDeleteItem = (type: 'STRUCTURE' | 'DFMEA' | 'PFMEA' | 'CP', id: string) => {
-      if(!window.confirm("Delete item? This action cannot be undone.")) return;
-      
-      if (type === 'STRUCTURE') {
-        setState(prev => ({
-            ...prev, 
-            structureElements: prev.structureElements.filter(i => i.element_id !== id),
-            // Also remove any diagram boxes linked to this element
-            projectDiagrams: state.selectedProjectId ? {
-                ...prev.projectDiagrams,
-                [state.selectedProjectId]: {
-                    ...currentDiagram,
-                    boxes: currentDiagram.boxes.filter(b => b.structure_element_id !== id)
-                }
-            } : prev.projectDiagrams
-        }));
-        if (selectedStructureId === id) setSelectedStructureId(null);
-      } else if (type === 'DFMEA') {
-          setState(prev => ({...prev, dfmeaItems: prev.dfmeaItems.filter(i => i.dfmea_id !== id)}));
-      } else if (type === 'PFMEA') {
-          setState(prev => ({...prev, pfmeaItems: prev.pfmeaItems.filter(i => i.pfmea_id !== id)}));
-      } else {
-          setState(prev => ({...prev, controlPlanItems: prev.controlPlanItems.filter(i => i.cp_id !== id)}));
+      if (window.confirm(`Delete Step ${stepNumber} and all its failure modes?`)) {
+          setState(prev => ({
+              ...prev,
+              pfmeaItems: prev.pfmeaItems.filter(i => !(i.project_id === state.selectedProjectId && i.process_step_number === stepNumber))
+          }));
       }
   };
 
-  const handleOpenWorkInstruction = (cpId: string) => {
-      const instruction = state.workInstructions.find(wi => wi.linked_cp_id === cpId);
-      if (instruction) {
-          setViewingWorkInstruction(instruction);
+  const handleSaveWorkInstruction = (wi: WorkInstruction) => {
+      setState(prev => {
+          const exists = prev.workInstructions.find(w => w.wi_id === wi.wi_id);
+          return {
+              ...prev,
+              workInstructions: exists 
+                ? prev.workInstructions.map(w => w.wi_id === wi.wi_id ? wi : w)
+                : [...prev.workInstructions, wi]
+          };
+      });
+      setShowWiEditor(false);
+  };
+
+  const handleDeleteWorkInstruction = (id: string) => {
+      if(window.confirm("Delete this Work Instruction?")) {
+          setState(prev => ({ ...prev, workInstructions: prev.workInstructions.filter(w => w.wi_id !== id) }));
       }
   };
 
-  // --- Render Helpers ---
+  const handleNavToControlPlan = (cpId: string) => {
+      // Find step related to this CP
+      const cp = state.controlPlanItems.find(c => c.cp_id === cpId);
+      if (cp) {
+          const pf = state.pfmeaItems.find(p => p.pfmea_id === cp.pfmea_link_id);
+          if (pf) {
+              setSelectedProcessStep(pf.process_step_number);
+          }
+      }
+      handleNavigate('CONTROL_PLAN');
+  };
+
+  // Highlights calculation for FMEA Table
+  const dfmeaHighlights: Record<string, 'focus' | 'parent' | 'child'> = {};
+  if (selectedDfmeaId) {
+      dfmeaHighlights[selectedDfmeaId] = 'focus';
+      const selectedItem = state.dfmeaItems.find(i => i.dfmea_id === selectedDfmeaId);
+      if (selectedItem) {
+          if (selectedItem.linked_parent_failure_id) dfmeaHighlights[selectedItem.linked_parent_failure_id] = 'parent';
+          if (selectedItem.linked_child_failure_id) dfmeaHighlights[selectedItem.linked_child_failure_id] = 'child';
+          
+          // Also check reverse links (if other items point to this one)
+          state.dfmeaItems.forEach(i => {
+              if (i.linked_child_failure_id === selectedItem.dfmea_id) dfmeaHighlights[i.dfmea_id] = 'parent'; // They are parent to me
+              if (i.linked_parent_failure_id === selectedItem.dfmea_id) dfmeaHighlights[i.dfmea_id] = 'child'; // They are child to me
+          });
+      }
+  }
 
   const GenericModal = ({ title, fields, onSubmit, initialData }: any) => {
     const [formData, setFormData] = useState(initialData || {});
@@ -423,6 +424,68 @@ export default function App() {
                                         />
                                     </div>
                                     <p className="text-[10px] text-slate-500 mt-1">{field.helpText}</p>
+                                </div>
+                            );
+                        }
+
+                        // Text List (Array of strings)
+                        if (field.type === 'text_list') {
+                            return (
+                                <div key={field.key} className={field.fullWidth ? 'col-span-2' : ''}>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">{field.label}</label>
+                                    <div className="space-y-2 border rounded-md p-3 bg-slate-50 border-slate-200">
+                                        {(formData[field.key] || []).map((item: string, idx: number) => (
+                                            <div key={idx} className="flex items-center justify-between bg-white px-3 py-2 rounded border border-slate-200 shadow-sm text-sm">
+                                                <span className="text-slate-700 font-mono">{item}</span>
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const newList = [...(formData[field.key] || [])];
+                                                        newList.splice(idx, 1);
+                                                        handleChange(field.key, newList);
+                                                    }}
+                                                    className="text-slate-400 hover:text-red-500 font-bold px-1 transition-colors"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                </button>
+                                            </div>
+                                        ))}
+                                        <div className="flex space-x-2 pt-1">
+                                            <input 
+                                                id={`input-${field.key}`}
+                                                type="text" 
+                                                className="flex-1 border-slate-300 rounded-md shadow-sm border p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                                                placeholder={field.placeholder || "Add parameter..."}
+                                                onKeyDown={(e) => {
+                                                    if(e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        const val = e.currentTarget.value.trim();
+                                                        if(val) {
+                                                            const newList = [...(formData[field.key] || []), val];
+                                                            handleChange(field.key, newList);
+                                                            e.currentTarget.value = '';
+                                                        }
+                                                    }
+                                                }}
+                                            />
+                                            <button 
+                                                type="button"
+                                                onClick={() => {
+                                                    const input = document.getElementById(`input-${field.key}`) as HTMLInputElement;
+                                                    const val = input?.value.trim();
+                                                    if(val) {
+                                                        const newList = [...(formData[field.key] || []), val];
+                                                        handleChange(field.key, newList);
+                                                        input.value = '';
+                                                    }
+                                                }}
+                                                className="bg-blue-600 text-white px-4 py-1.5 rounded hover:bg-blue-700 text-sm font-medium transition-colors shadow-sm"
+                                            >
+                                                Add
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 mt-1">Press Enter to add items.</p>
                                 </div>
                             );
                         }
@@ -529,12 +592,19 @@ export default function App() {
                         <h2 className="text-2xl font-bold text-slate-800">Digital Work Instructions</h2>
                         <p className="text-slate-500">Standard Operating Procedures & Visual Aids</p>
                     </div>
+                    <button 
+                        onClick={() => { setEditingItem(null); setShowWiEditor(true); }}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow-sm flex items-center font-medium"
+                    >
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                        Create New
+                    </button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {state.workInstructions.map(wi => (
-                        <div key={wi.wi_id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow group">
-                            <div className="h-40 bg-slate-100 relative">
+                        <div key={wi.wi_id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow group flex flex-col h-full">
+                            <div className="h-40 bg-slate-100 relative shrink-0">
                                 {wi.steps[0]?.image_url ? (
                                     <img src={wi.steps[0].image_url} alt={wi.title} className="w-full h-full object-cover" />
                                 ) : (
@@ -546,10 +616,10 @@ export default function App() {
                                     {wi.model_variant}
                                 </div>
                             </div>
-                            <div className="p-5">
+                            <div className="p-5 flex-1 flex flex-col">
                                 <div className="text-xs text-slate-500 font-mono mb-1">{wi.doc_id}</div>
                                 <h3 className="font-bold text-lg text-slate-800 mb-2">{wi.title}</h3>
-                                <div className="flex items-center justify-between mt-4">
+                                <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-100">
                                     <span className="text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded">
                                         {wi.steps.length} Steps
                                     </span>
@@ -562,16 +632,43 @@ export default function App() {
                                     </button>
                                 </div>
                             </div>
+                            <div className="bg-slate-50 px-4 py-3 border-t border-slate-200 flex justify-between items-center text-xs">
+                                <div className="flex space-x-2">
+                                     <button onClick={() => { setEditingItem(wi); setShowWiEditor(true); }} className="text-slate-600 hover:text-blue-600 font-medium">Edit</button>
+                                     <span className="text-slate-300">|</span>
+                                     <button onClick={() => handleDeleteWorkInstruction(wi.wi_id)} className="text-slate-600 hover:text-red-600 font-medium">Delete</button>
+                                </div>
+                                {wi.linked_cp_id && (
+                                    <button 
+                                        onClick={() => handleNavToControlPlan(wi.linked_cp_id)}
+                                        className="text-indigo-600 hover:text-indigo-800 font-bold flex items-center"
+                                    >
+                                        Go to CP
+                                        <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     ))}
                     
                     {state.workInstructions.length === 0 && (
                         <div className="col-span-full text-center py-12 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl">
                             <p className="text-slate-500">No Work Instructions available.</p>
-                            <p className="text-xs text-slate-400 mt-1">Create one from the Control Plan view.</p>
+                            <p className="text-xs text-slate-400 mt-1">Create one to get started.</p>
                         </div>
                     )}
                 </div>
+                
+                {showWiEditor && (
+                    <WorkInstructionEditor 
+                        isOpen={showWiEditor}
+                        onClose={() => setShowWiEditor(false)}
+                        onSave={handleSaveWorkInstruction}
+                        initialData={editingItem}
+                        controlPlanItems={projectControlPlanItems}
+                        pfmeaItems={projectPfmeaItems}
+                    />
+                )}
             </div>
         );
 
@@ -583,25 +680,39 @@ export default function App() {
 
         return (
           <div className="space-y-6">
-            <ExplodedView 
-                diagram={currentDiagram}
-                structureElements={projectStructureElements}
-                onUploadImage={handleUploadImage}
-                onAddBox={handleAddBox}
-                onRemoveBox={handleRemoveBox}
-                onBoxDropNew={handleBoxDropNew}
-                onAddSuggestedElements={handleAddSuggestedElements}
-            />
+            <div id="exploded-view-section" className="scroll-mt-20">
+                <ExplodedView 
+                    diagrams={currentDiagrams}
+                    activeDiagramId={selectedDiagramId}
+                    structureElements={projectStructureElements}
+                    selectedElementId={selectedStructureId}
+                    onSelectDiagram={setSelectedDiagramId}
+                    onAddDiagram={handleAddDiagram}
+                    onDeleteDiagram={handleDeleteDiagram}
+                    onRenameDiagram={handleRenameDiagram}
+                    onUploadImage={handleUploadImage}
+                    onAddBox={handleAddBox}
+                    onRemoveBox={handleRemoveBox}
+                    onBoxDropNew={handleBoxDropNew}
+                    onAddSuggestedElements={handleAddSuggestedElements}
+                    onSelectElement={setSelectedStructureId}
+                />
+            </div>
 
             <StructureVisualizer
                 projectName={activeProject?.part_name || "Project"}
                 elements={projectStructureElements}
                 selectedElementId={selectedStructureId}
+                activeDiagram={activeDiagram}
                 onSelectElement={setSelectedStructureId}
                 onAddElement={() => { setEditingItem({}); setModalType('STRUCTURE'); setIsModalOpen(true); }}
                 onEditElement={(el) => { setEditingItem(el); setModalType('STRUCTURE'); setIsModalOpen(true); }}
                 onDeleteElement={(id) => handleDeleteItem('STRUCTURE', id)}
                 onUpdateElement={handleUpdateStructureElement}
+                onImagePreviewClick={() => {
+                    const el = document.getElementById('exploded-view-section');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }}
             />
 
             <FmeaTable<DfmeaItem>
@@ -609,7 +720,11 @@ export default function App() {
                 ? `Design FMEA for: ${projectStructureElements.find(e => e.element_id === selectedStructureId)?.element_title}` 
                 : "Design FMEA (All Items)"}
               colorTheme="blue"
+              idKey="dfmea_id"
               data={filteredDfmea}
+              highlights={dfmeaHighlights}
+              onRowClick={(item) => setSelectedDfmeaId(item.dfmea_id === selectedDfmeaId ? null : item.dfmea_id)}
+              customActions={<SearchBar />}
               renderRowActions={(item) => (
                   <button 
                     onClick={() => handleAddFailureModeFromItem(item)}
@@ -673,21 +788,27 @@ export default function App() {
                         setState(prev => {
                             const exists = prev.structureElements.find(i => i.element_id === newItem.element_id);
                             
-                            // If this was a drag-and-drop creation, add the box to the diagram
+                            // If this was a drag-and-drop creation, add the box to the specific diagram
                             let updatedDiagrams = prev.projectDiagrams;
                             if (pendingDiagramDrop && !exists && state.selectedProjectId) {
+                                // Add to the specific diagram that triggered the drop
                                 updatedDiagrams = {
                                     ...prev.projectDiagrams,
-                                    [state.selectedProjectId]: {
-                                        ...currentDiagram,
-                                        boxes: [...currentDiagram.boxes, {
-                                            id: `BOX-${Date.now()}`,
-                                            structure_element_id: newItem.element_id,
-                                            x: pendingDiagramDrop.x,
-                                            y: pendingDiagramDrop.y
-                                        }]
-                                    }
-                                }
+                                    [state.selectedProjectId]: (prev.projectDiagrams[state.selectedProjectId] || []).map(d => {
+                                        if (d.id === pendingDiagramDrop.diagramId) {
+                                            return {
+                                                ...d,
+                                                boxes: [...d.boxes, {
+                                                    id: `BOX-${Date.now()}`,
+                                                    structure_element_id: newItem.element_id,
+                                                    x: pendingDiagramDrop.x,
+                                                    y: pendingDiagramDrop.y
+                                                }]
+                                            };
+                                        }
+                                        return d;
+                                    }) || []
+                                };
                             }
 
                             return {
@@ -773,7 +894,7 @@ export default function App() {
                             key: 'item_function', 
                             label: 'Item Function', 
                             required: true, 
-                            fullWidth: true,
+                            fullWidth: true, 
                             type: 'text',
                             suggestions: existingFunctions,
                             placeholder: "What does this item do? (Type or Select existing)"
@@ -834,7 +955,9 @@ export default function App() {
                 ? `Process FMEA for Step ${selectedProcessStep}` 
                 : "Process FMEA (All Steps)"}
               colorTheme="green"
+              idKey="pfmea_id"
               data={filteredPfmea}
+              customActions={<SearchBar />}
               onAdd={() => { setEditingItem({}); setModalType('PFMEA'); setIsModalOpen(true); }}
               onEdit={(item) => { setEditingItem(item); setModalType('PFMEA'); setIsModalOpen(true); }}
               onDelete={(id) => handleDeleteItem('PFMEA', id)}
@@ -873,7 +996,6 @@ export default function App() {
                 { key: 'actions', label: '' }
               ]}
             />
-             {/* ... PFMEA and PROCESS_STEP modals ... */}
              {isModalOpen && modalType === 'PFMEA' && (
                 <GenericModal
                     title={editingItem.pfmea_id ? "Edit PFMEA Item" : "New PFMEA Item"}
@@ -928,7 +1050,8 @@ export default function App() {
                                             // If user changed step number, update it. If not, it remains.
                                             process_step_number: data.process_step_number,
                                             process_function: data.process_function,
-                                            process_requirement: data.process_requirement
+                                            process_requirement: data.process_requirement,
+                                            process_specifications: data.process_specifications
                                         };
                                     }
                                     return item;
@@ -946,7 +1069,8 @@ export default function App() {
                                     prevention_control: '',
                                     detection_control: '',
                                     occurrence_score: 1,
-                                    detection_score: 1
+                                    detection_score: 1,
+                                    process_specifications: data.process_specifications || []
                                 };
                                 newItems.push(newItem);
                             }
@@ -959,6 +1083,7 @@ export default function App() {
                         { key: 'process_step_number', label: 'Step Number', type: 'number', required: true },
                         { key: 'process_function', label: 'Process Function', required: true, fullWidth: true },
                         { key: 'process_requirement', label: 'Process Requirement', fullWidth: true },
+                        { key: 'process_specifications', label: 'Process Specifications / Parameters', type: 'text_list', fullWidth: true, placeholder: "e.g. Temp: 200°C" }
                     ]}
                 />
             )}
@@ -966,186 +1091,40 @@ export default function App() {
         );
 
       case 'CONTROL_PLAN':
-        // ... existing CONTROL_PLAN code ...
-        const processStepOptions = Array.from(new Set(state.pfmeaItems
-            .filter(i => i.project_id === state.selectedProjectId)
-            .map(i => i.process_step_number)))
-            .sort((a: number, b: number) => a - b)
-            .map(n => ({ value: n.toString(), label: `OP ${n}` }));
-
-        return (
-          <>
-            <ProcessFlowVisualizer 
-                items={state.pfmeaItems.filter(i => i.project_id === state.selectedProjectId)}
-                selectedStepNumber={selectedProcessStep}
-                onSelectStep={setSelectedProcessStep}
-                onAddStep={handleAddProcessStep}
-                onEditStep={handleEditProcessStep}
-                onDeleteStep={handleDeleteProcessStep}
-            />
-
-            <FmeaTable<ControlPlanItem>
-              title={selectedProcessStep !== null 
-                ? `Control Plan for Step ${selectedProcessStep}` 
-                : "Control Plan (All Steps)"}
+          return (
+             <FmeaTable<ControlPlanItem>
+              title="Control Plan"
               colorTheme="indigo"
-              data={filteredControlPlan}
-              renderRowActions={(item) => {
-                  const hasWI = state.workInstructions.some(wi => wi.linked_cp_id === item.cp_id);
-                  if (hasWI) {
-                      return (
-                          <button 
-                            onClick={() => handleOpenWorkInstruction(item.cp_id)}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm transition-colors mr-2 flex items-center"
-                          >
-                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
-                              View WI
-                          </button>
-                      );
-                  }
-                  return null;
-              }}
-              onAdd={() => { 
-                  setEditingItem({
-                      part_process_number: selectedProcessStep ? selectedProcessStep.toString() : ''
-                  }); 
-                  setModalType('CP'); 
-                  setIsModalOpen(true); 
-              }}
-              onEdit={(item) => { setEditingItem(item); setModalType('CP'); setIsModalOpen(true); }}
-              onDelete={(id) => handleDeleteItem('CP', id)}
+              idKey="cp_id"
+              data={projectControlPlanItems}
+              customActions={<SearchBar />}
+              onAdd={() => { alert("Control Plans are typically generated from PFMEA. Add one there!"); }}
+              onEdit={(item) => alert("Edit not implemented in demo")}
+              onDelete={(id) => alert("Delete not implemented in demo")}
               columns={[
-                { key: 'part_process_number', label: 'Step #' },
-                { key: 'product_characteristic', label: 'Prod. Char' },
-                { key: 'process_characteristic', label: 'Proc. Char' },
-                { key: 'special_char_class', label: 'Class' },
-                { key: 'specification_tolerance', label: 'Spec/Tol' },
-                { key: 'evaluation_technique', label: 'Eval Tech' },
+                { key: 'part_process_number', label: 'Step', width: '50px' },
+                { key: 'product_characteristic', label: 'Product Char.' },
+                { key: 'process_characteristic', label: 'Process Char.' },
+                { key: 'specification_tolerance', label: 'Spec / Tolerance' },
+                { key: 'evaluation_technique', label: 'Eval Technique' },
                 { key: 'sample_size', label: 'Size' },
                 { key: 'sample_freq', label: 'Freq' },
-                { key: 'reaction_plan', label: 'Reaction', render: i => <span className="text-red-600 font-medium text-xs">{i.reaction_plan}</span> },
+                { key: 'control_method', label: 'Control Method' },
+                { key: 'reaction_plan', label: 'Reaction Plan', render: i => <span className="text-red-600 font-medium">{i.reaction_plan}</span> },
                 { key: 'actions', label: '' }
               ]}
             />
-            {isModalOpen && modalType === 'CP' && (
-                <GenericModal
-                    title={editingItem.cp_id ? "Edit Control Plan" : "New Control Plan Item"}
-                    initialData={editingItem}
-                    onSubmit={(data: any) => {
-                        const newItem = {
-                            ...data,
-                            cp_id: data.cp_id || `CP-${Date.now()}`
-                        };
-                        setState(prev => {
-                            const exists = prev.controlPlanItems.find(i => i.cp_id === newItem.cp_id);
-                            return {
-                                ...prev,
-                                controlPlanItems: exists 
-                                    ? prev.controlPlanItems.map(i => i.cp_id === newItem.cp_id ? newItem : i)
-                                    : [...prev.controlPlanItems, newItem]
-                            };
-                        });
-                        setIsModalOpen(false);
-                    }}
-                    fields={[
-                        { 
-                            key: 'pfmea_link_id', 
-                            label: 'Link to PFMEA (Golden Thread)', 
-                            type: 'select', 
-                            fullWidth: true, 
-                            options: filteredPfmea.map(p => ({ value: p.pfmea_id, label: `Step ${p.process_step_number}: ${p.failure_mode}` })),
-                            onChangeEffect: (id: string) => {
-                                const pfmeaItem = state.pfmeaItems.find(p => p.pfmea_id === id);
-                                if (pfmeaItem) {
-                                    return {
-                                        part_process_number: pfmeaItem.process_step_number.toString(),
-                                        product_characteristic: pfmeaItem.failure_mode,
-                                        process_characteristic: pfmeaItem.failure_cause,
-                                        specification_tolerance: pfmeaItem.process_requirement
-                                    };
-                                }
-                                return {};
-                            }
-                        },
-                        { key: 'part_process_number', label: 'Process #', type: 'select', options: processStepOptions, required: true },
-                        { key: 'product_characteristic', label: 'Product Characteristic' },
-                        { key: 'process_characteristic', label: 'Process Characteristic' },
-                        { key: 'special_char_class', label: 'Class', options: [{value: 'CC', label: 'Critical'}, {value: 'SC', label: 'Significant'}] , type: 'select'},
-                        { key: 'specification_tolerance', label: 'Spec/Tolerance' },
-                        { key: 'evaluation_technique', label: 'Eval Technique' },
-                        { key: 'sample_size', label: 'Sample Size' },
-                        { key: 'sample_freq', label: 'Frequency' },
-                        { key: 'control_method', label: 'Control Method' },
-                        { key: 'reaction_plan', label: 'Reaction Plan', fullWidth: true }
-                    ]}
-                />
-            )}
-             {/* Reuse Process Step Modal logic for CP view editing */}
-             {isModalOpen && modalType === 'PROCESS_STEP' && (
-                <GenericModal
-                    title={editingItem.pfmea_id ? "Edit Process Step Details" : "Add Process Step"}
-                    initialData={editingItem}
-                    onSubmit={(data: any) => {
-                        const isEdit = !!data.pfmea_id;
-                        
-                        setState(prev => {
-                            let newItems = [...prev.pfmeaItems];
-
-                            if (isEdit) {
-                                // Batch update all items with this step number in this project
-                                newItems = newItems.map(item => {
-                                    if (item.project_id === state.selectedProjectId && item.process_step_number === editingItem.process_step_number) {
-                                        return {
-                                            ...item,
-                                            // If user changed step number, update it. If not, it remains.
-                                            process_step_number: data.process_step_number,
-                                            process_function: data.process_function,
-                                            process_requirement: data.process_requirement
-                                        };
-                                    }
-                                    return item;
-                                });
-                            } else {
-                                // Add new item (placeholder for failure mode)
-                                const newItem = {
-                                    ...data,
-                                    project_id: state.selectedProjectId,
-                                    pfmea_id: `PF-${Date.now()}`,
-                                    // Default/Empty values for failure analysis parts
-                                    linked_dfmea_id: null,
-                                    failure_mode: 'New Failure Mode',
-                                    failure_cause: '',
-                                    prevention_control: '',
-                                    detection_control: '',
-                                    occurrence_score: 1,
-                                    detection_score: 1
-                                };
-                                newItems.push(newItem);
-                            }
-
-                            return { ...prev, pfmeaItems: newItems };
-                        });
-                        setIsModalOpen(false);
-                    }}
-                    fields={[
-                        { key: 'process_step_number', label: 'Step Number', type: 'number', required: true },
-                        { key: 'process_function', label: 'Process Function', required: true, fullWidth: true },
-                        { key: 'process_requirement', label: 'Process Requirement', fullWidth: true },
-                    ]}
-                />
-            )}
-          </>
-        );
+          );
 
       case 'TRACEABILITY':
         return (
-          <TraceabilityMatrix 
-            dfmeaItems={filteredDfmea}
-            pfmeaItems={filteredPfmea}
-            controlPlanItems={filteredControlPlan}
-          />
+            <TraceabilityMatrix 
+                dfmeaItems={state.dfmeaItems.filter(i => i.project_id === state.selectedProjectId)}
+                pfmeaItems={state.pfmeaItems.filter(i => i.project_id === state.selectedProjectId)}
+                controlPlanItems={projectControlPlanItems}
+            />
         );
-      
+
       default:
         return <div>Select a view</div>;
     }
@@ -1157,15 +1136,19 @@ export default function App() {
       onNavigate={handleNavigate}
       projectName={activeProject?.part_name}
     >
-      {/* RiskSettingsModal removed - functionality moved to ProjectSettings */}
-      {renderContent()}
-      
+      <div className="p-6 h-full overflow-auto bg-slate-100/50">
+        {renderContent()}
+      </div>
+
       {viewingWorkInstruction && (
           <DigitalWorkInstruction 
-            instruction={viewingWorkInstruction}
-            onClose={() => setViewingWorkInstruction(null)}
+              instruction={viewingWorkInstruction}
+              onClose={() => setViewingWorkInstruction(null)}
+              onGoToControlPlan={handleNavToControlPlan}
           />
       )}
     </Layout>
   );
 }
+
+export default App;

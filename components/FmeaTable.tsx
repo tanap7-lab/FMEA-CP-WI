@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { DfmeaItem, PfmeaItem, ControlPlanItem, Severity, Occurrence, Detection } from '../types';
 
@@ -12,17 +13,20 @@ interface FmeaTableProps<T> {
   title: string;
   data: T[];
   columns: Column<T>[];
+  idKey: keyof T; // Required to identify rows for highlighting
   onAdd: () => void;
   onEdit: (item: T) => void;
   onDelete: (id: string) => void;
   onOpenSettings?: () => void;
+  onRowClick?: (item: T) => void;
+  highlights?: Record<string, 'focus' | 'parent' | 'child'>; // Map of ID -> Highlight Type
   colorTheme: 'blue' | 'green' | 'indigo';
   customActions?: React.ReactNode;
   renderRowActions?: (item: T) => React.ReactNode;
 }
 
 export function FmeaTable<T>({ 
-  title, data, columns, onAdd, onEdit, onDelete, onOpenSettings, colorTheme, customActions, renderRowActions 
+  title, data, columns, idKey, onAdd, onEdit, onDelete, onOpenSettings, onRowClick, highlights, colorTheme, customActions, renderRowActions 
 }: FmeaTableProps<T>) {
   
   const getThemeClasses = () => {
@@ -42,10 +46,58 @@ export function FmeaTable<T>({
     }
   };
 
+  const hasHighlights = highlights && Object.keys(highlights).length > 0;
+
+  const renderConnectionBadge = (type: 'focus' | 'parent' | 'child') => {
+      if (type === 'parent') {
+          return (
+              <div className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-100 text-orange-700 border border-orange-200 uppercase tracking-wide mr-2 mb-1">
+                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                  Caused By (Parent)
+              </div>
+          );
+      } else if (type === 'child') {
+          return (
+              <div className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-100 text-green-700 border border-green-200 uppercase tracking-wide mr-2 mb-1">
+                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                  Causes (Child)
+              </div>
+          );
+      } else if (type === 'focus') {
+          return (
+              <div className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-700 border border-blue-200 uppercase tracking-wide mr-2 mb-1">
+                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                  Selected Focus
+              </div>
+          );
+      }
+      return null;
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow border border-slate-200 overflow-hidden flex flex-col h-full">
+    <div className="bg-white rounded-lg shadow border border-slate-200 overflow-hidden flex flex-col h-full transition-all">
       <div className={`px-6 py-4 border-b flex justify-between items-center ${getThemeClasses()}`}>
-        <h3 className="font-bold text-lg">{title}</h3>
+        <div className="flex flex-col">
+            <h3 className="font-bold text-lg">{title}</h3>
+            {hasHighlights && (
+                <div className="flex items-center space-x-3 mt-1 text-[10px] uppercase font-bold tracking-wider">
+                    <span className="flex items-center text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-100">
+                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                        Effect (Parent)
+                    </span>
+                    <span className="text-slate-300">→</span>
+                    <span className="flex items-center text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        Selected
+                    </span>
+                    <span className="text-slate-300">→</span>
+                    <span className="flex items-center text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-100">
+                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                        Cause (Child)
+                    </span>
+                </div>
+            )}
+        </div>
         <div className="flex space-x-2">
             {customActions}
             {onOpenSettings && (
@@ -68,8 +120,8 @@ export function FmeaTable<T>({
         </div>
       </div>
       
-      <div className="overflow-auto flex-1 custom-scrollbar">
-        <table className="w-full text-sm text-left">
+      <div className="overflow-auto flex-1 custom-scrollbar relative">
+        <table className="w-full text-sm text-left border-collapse">
           <thead className={`text-xs uppercase font-semibold sticky top-0 z-10 ${getHeaderClasses()}`}>
             <tr>
               {columns.map(col => (
@@ -87,28 +139,51 @@ export function FmeaTable<T>({
                     </td>
                 </tr>
             ) : (
-                data.map((item, idx) => (
-                <tr key={idx} className="hover:bg-slate-50 transition-colors group">
-                    {columns.map(col => (
-                    <td key={col.key as string} className="px-4 py-3 border-r border-slate-100 last:border-r-0 align-top max-w-xs break-words">
-                        {col.key === 'actions' ? (
-                            <div className="flex items-center justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                {renderRowActions && (
-                                  <>
-                                    {renderRowActions(item)}
-                                    <div className="h-4 w-px bg-slate-300 mx-1"></div>
-                                  </>
+                data.map((item, idx) => {
+                    const id = String((item as any)[idKey]);
+                    const highlightType = highlights ? highlights[id] : undefined;
+                    
+                    // Row Styling based on highlight
+                    let rowClass = "hover:bg-slate-50 transition-colors group cursor-pointer border-l-4 border-transparent relative";
+                    if (hasHighlights) {
+                        if (highlightType === 'focus') rowClass = "bg-blue-50/80 hover:bg-blue-100 border-l-4 border-l-blue-600 shadow-md z-10 scale-[1.002] transition-transform";
+                        else if (highlightType === 'parent') rowClass = "bg-orange-50/50 hover:bg-orange-100 border-l-4 border-l-orange-400";
+                        else if (highlightType === 'child') rowClass = "bg-green-50/50 hover:bg-green-100 border-l-4 border-l-green-500";
+                        else rowClass = "opacity-40 hover:opacity-60 grayscale-[0.5] transition-opacity blur-[0.5px] hover:blur-0";
+                    }
+
+                    return (
+                        <tr 
+                            key={id} 
+                            className={rowClass}
+                            onClick={() => onRowClick && onRowClick(item)}
+                        >
+                            {columns.map((col, colIdx) => (
+                            <td key={col.key as string} className="px-4 py-3 border-r border-slate-100 last:border-r-0 align-top max-w-xs break-words relative">
+                                {colIdx === 0 && highlightType && (
+                                    <div className="mb-1">
+                                        {renderConnectionBadge(highlightType)}
+                                    </div>
                                 )}
-                                <button onClick={() => onEdit(item)} className="text-blue-600 hover:text-blue-800 text-xs font-medium px-1">Edit</button>
-                                <button onClick={() => onDelete(item[Object.keys(item)[0]] as string)} className="text-red-500 hover:text-red-700 text-xs font-medium px-1">Delete</button>
-                            </div>
-                        ) : (
-                            col.render ? col.render(item) : (item as any)[col.key]
-                        )}
-                    </td>
-                    ))}
-                </tr>
-                ))
+                                {col.key === 'actions' ? (
+                                    <div className="flex items-center justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        {renderRowActions && (
+                                        <>
+                                            {renderRowActions(item)}
+                                            <div className="h-4 w-px bg-slate-300 mx-1"></div>
+                                        </>
+                                        )}
+                                        <button onClick={(e) => { e.stopPropagation(); onEdit(item); }} className="text-blue-600 hover:text-blue-800 text-xs font-medium px-1">Edit</button>
+                                        <button onClick={(e) => { e.stopPropagation(); onDelete(id); }} className="text-red-500 hover:text-red-700 text-xs font-medium px-1">Delete</button>
+                                    </div>
+                                ) : (
+                                    col.render ? col.render(item) : (item as any)[col.key]
+                                )}
+                            </td>
+                            ))}
+                        </tr>
+                    );
+                })
             )}
           </tbody>
         </table>

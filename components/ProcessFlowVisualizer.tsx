@@ -1,22 +1,18 @@
+
 import React, { useState } from 'react';
 import { PfmeaItem } from '../types';
 
 interface ProcessFlowVisualizerProps {
   items: PfmeaItem[];
   selectedStepNumber: number | null;
-  onSelectStep: (stepNumber: number | null) => void;
+  onSelectStep: (step: number | null) => void;
   onAddStep: () => void;
-  onEditStep: (stepNumber: number) => void;
-  onDeleteStep: (stepNumber: number) => void;
+  onEditStep: (step: number) => void;
+  onDeleteStep: (step: number) => void;
 }
 
-export const ProcessFlowVisualizer: React.FC<ProcessFlowVisualizerProps> = ({
-  items,
-  selectedStepNumber,
-  onSelectStep,
-  onAddStep,
-  onEditStep,
-  onDeleteStep
+export const ProcessFlowVisualizer: React.FC<ProcessFlowVisualizerProps> = ({ 
+    items, selectedStepNumber, onSelectStep, onAddStep, onEditStep, onDeleteStep 
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
 
@@ -28,7 +24,8 @@ export const ProcessFlowVisualizer: React.FC<ProcessFlowVisualizerProps> = ({
       return {
         stepNumber: stepNum,
         function: item?.process_function || 'Unknown Function',
-        requirement: item?.process_requirement || ''
+        requirement: item?.process_requirement || '',
+        specifications: item?.process_specifications || []
       };
     });
 
@@ -110,6 +107,19 @@ export const ProcessFlowVisualizer: React.FC<ProcessFlowVisualizerProps> = ({
                             </div>
                             <div className="font-bold text-slate-800 text-sm mb-1 leading-tight">{step.function}</div>
                              {step.requirement && <div className="text-[10px] text-slate-500 truncate mt-1 pt-1 border-t border-slate-100">{step.requirement}</div>}
+                             {/* Display Specifications */}
+                             {step.specifications && step.specifications.length > 0 && (
+                                <div className="mt-2 space-y-0.5">
+                                    {step.specifications.slice(0, 2).map((spec, i) => (
+                                        <div key={i} className="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono truncate" title={spec}>
+                                            {spec}
+                                        </div>
+                                    ))}
+                                    {step.specifications.length > 2 && (
+                                        <div className="text-[9px] text-slate-400 pl-1">+{step.specifications.length - 2} more...</div>
+                                    )}
+                                </div>
+                             )}
                         </div>
                         
                         {/* Connecting Line Down (Optional visual cue) */}
@@ -117,14 +127,11 @@ export const ProcessFlowVisualizer: React.FC<ProcessFlowVisualizerProps> = ({
                            <div className="absolute -bottom-8 w-0.5 h-8 bg-emerald-500 z-10"></div> 
                         )}
                     </div>
-                    
-                    <div className="w-8 h-0.5 bg-slate-300 flex items-center justify-center">
-                        <svg className="w-4 h-4 text-slate-300 -mr-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>
-                    </div>
                 </React.Fragment>
             ))}
-
+            
             {/* End Node */}
+            <div className="w-8 h-0.5 bg-slate-300"></div>
             <div className="flex flex-col items-center opacity-50">
                 <div className="w-10 h-10 rounded-full bg-slate-200 border-2 border-slate-300 flex items-center justify-center font-bold text-slate-500 text-[10px]">END</div>
             </div>

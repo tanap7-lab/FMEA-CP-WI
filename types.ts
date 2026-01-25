@@ -1,13 +1,12 @@
 
-// Type definitions matching the Quality Management Database Schema
+export type ViewMode = 'DASHBOARD' | 'DFMEA' | 'PFMEA' | 'CONTROL_PLAN' | 'WORK_INSTRUCTIONS' | 'TRACEABILITY' | 'PROJECT_SETTINGS' | 'ADMIN';
 
 export interface ProjectMaster {
-  project_id: string; // PK
+  project_id: string;
   part_number: string;
   part_name: string;
   revision_level: string;
   core_team_members: string[];
-  // New Fields
   process_id?: string;
   customer?: string;
   product?: string;
@@ -16,144 +15,97 @@ export interface ProjectMaster {
 }
 
 export interface StructureElement {
-  element_id: string; // PK
-  project_id: string; // FK
+  element_id: string;
+  project_id: string;
   element_title: string;
-  description: string;
-  specification: string;
-  parent_element_id?: string | null; // For future hierarchy
-  category?: 'Component' | 'Sub-system' | 'Assembly'; // Added category
+  description?: string;
+  specification?: string;
+  category?: 'Component' | 'Sub-system' | 'Assembly';
+  parent_element_id?: string | null;
 }
 
 export interface DfmeaItem {
-  dfmea_id: string; // PK
-  project_id: string; // FK
-  structure_element_id: string | null; // FK -> StructureElement
-  
-  // 1 Function : N Failure Modes
-  item_function: string; 
-  
-  // Failure Chain Links
-  failure_mode: string;
-  failure_mode_id?: string; // UUID to identify this node in the failure net
-
-  // Link to Higher Level (Effect)
-  effect_of_failure: string; // Text description
-  linked_parent_failure_id?: string | null; // ID of the failure mode in the Parent Element
-
-  // Link to Lower Level (Cause)
-  potential_cause: string; // Text description
-  linked_child_failure_id?: string | null; // ID of the failure mode in a Child Element
-
+  dfmea_id: string;
+  project_id: string;
+  structure_element_id: string;
+  item_function: string;
   requirement: string;
-  
-  severity_score: number; // 1-10
-  classification: string;
-  
-  occurrence_score: number; // 1-10
+  failure_mode: string;
+  effect_of_failure: string;
+  severity_score: number;
+  classification?: string;
+  potential_cause: string;
+  occurrence_score: number;
   design_control_prevention: string;
   design_control_detection: string;
-  detection_score: number; // 1-10
-  rpn: number; // Calculated
+  detection_score: number;
+  rpn: number;
+  linked_parent_failure_id?: string;
+  linked_child_failure_id?: string;
+  failure_mode_id?: string;
 }
 
 export interface PfmeaItem {
-  pfmea_id: string; // PK
-  project_id: string; // FK
-  linked_dfmea_id: string | null; // FK (Golden Thread)
+  pfmea_id: string;
+  project_id: string;
+  linked_dfmea_id: string | null;
   process_step_number: number;
   process_function: string;
   process_requirement: string;
+  process_specifications?: string[];
   failure_mode: string;
   failure_cause: string;
   prevention_control: string;
   detection_control: string;
-  occurrence_score: number; // 1-10
-  detection_score: number; // 1-10
+  occurrence_score: number;
+  detection_score: number;
 }
 
 export interface ControlPlanItem {
-  cp_id: string; // PK
-  pfmea_link_id: string; // FK
-  part_process_number: string;
-  product_characteristic: string;
-  process_characteristic: string;
-  special_char_class: string;
-  specification_tolerance: string;
-  evaluation_technique: string;
-  sample_size: string;
-  sample_freq: string;
-  control_method: string;
-  reaction_plan: string;
+  cp_id: string;
+  pfmea_link_id: string;
+  part_process_number?: string;
+  product_characteristic?: string;
+  process_characteristic?: string;
+  special_char_class?: string;
+  specification_tolerance?: string;
+  evaluation_technique?: string;
+  sample_size?: string;
+  sample_freq?: string;
+  control_method?: string;
+  reaction_plan?: string;
 }
 
-// --- Digital Work Instruction Types ---
-
 export interface ImageOverlay {
-  id: string;
-  type: 'arrow' | 'box' | 'circle' | 'label';
-  x: number; // Percentage X position (0-100)
-  y: number; // Percentage Y position (0-100)
-  width?: number; // Percentage width (for box/circle)
-  height?: number; // Percentage height (for box/circle)
-  x2?: number; // Percentage X end position (for arrow)
-  y2?: number; // Percentage Y end position (for arrow)
-  text?: string; // Text content (for label)
-  color?: string; // Hex code or tailwind color class prefix
+    id: string;
+    type: 'box' | 'circle' | 'arrow' | 'label';
+    x: number;
+    y: number;
+    width?: number;
+    height?: number;
+    x2?: number;
+    y2?: number;
+    text?: string;
+    color?: string;
 }
 
 export interface WorkInstructionStep {
-  step_number: number;
-  title: string;
-  image_url: string; // URL for the visual aid
-  overlays?: ImageOverlay[]; // New: Visual overlays for the image
-  sub_steps: string[]; // e.g., ["1.1 Inspect...", "1.2 Align..."]
-  warning_alert?: {
-    message: string;
-    type: 'critical' | 'warning' | 'info'; // Determines icon/color
-  };
-  tool_specs?: {
-    value: number;
-    unit: string;
-    tool_type: string;
-  }[];
+    step_number: number;
+    title: string;
+    image_url?: string;
+    sub_steps: string[];
+    overlays?: ImageOverlay[];
+    warning_alert?: { type: string; message: string; };
+    tool_specs?: Array<{ tool_type: string; value: number | string; unit: string; }>;
 }
 
 export interface WorkInstruction {
-  wi_id: string; // PK
-  linked_cp_id: string; // FK to ControlPlanItem
-  doc_id: string; // e.g., "EWI-001"
-  title: string; // e.g., "Front Door Panel Installation"
-  model_variant: string; // e.g., "Model X"
-  steps: WorkInstructionStep[];
-}
-
-// Diagram Types
-export interface ExplodedViewBox {
-  id: string;
-  structure_element_id: string;
-  x: number; // Percentage X position (0-100)
-  y: number; // Percentage Y position (0-100)
-}
-
-export interface ProjectDiagram {
-  imageUrl: string | null;
-  boxes: ExplodedViewBox[];
-}
-
-// Helper types for App State
-export type ViewMode = 'DASHBOARD' | 'DFMEA' | 'PFMEA' | 'CONTROL_PLAN' | 'WORK_INSTRUCTIONS' | 'TRACEABILITY' | 'PROJECT_SETTINGS' | 'ADMIN';
-export type RiskMethod = 'RPN' | 'AP';
-
-export interface RiskDefinitions {
-  severity: Record<number, string>;
-  occurrence: Record<number, string>;
-  detection: Record<number, string>;
-  ap: {
-      H: string;
-      M: string;
-      L: string;
-  };
+    wi_id: string;
+    linked_cp_id?: string;
+    doc_id: string;
+    title: string;
+    model_variant: string;
+    steps: WorkInstructionStep[];
 }
 
 export interface ApRule {
@@ -167,36 +119,35 @@ export interface ApRule {
     result: 'H' | 'M' | 'L';
 }
 
+export type RiskMethod = 'RPN' | 'AP';
+
 export interface RiskSettings {
-  method: RiskMethod;
-  rpnThresholds: { medium: number; high: number };
-  definitions: RiskDefinitions;
-  apLogic: ApRule[];
+    method: RiskMethod;
+    rpnThresholds: { medium: number, high: number };
+    apLogic: ApRule[];
+    definitions: {
+        severity: Record<number, string>;
+        occurrence: Record<number, string>;
+        detection: Record<number, string>;
+        ap: Record<string, string>;
+    }
 }
 
-export interface AppState {
-  projects: ProjectMaster[];
-  structureElements: StructureElement[];
-  dfmeaItems: DfmeaItem[];
-  pfmeaItems: PfmeaItem[];
-  controlPlanItems: ControlPlanItem[];
-  projectDiagrams: Record<string, ProjectDiagram>; // Keyed by project_id
-  
-  // DWI Data
-  workInstructions: WorkInstruction[];
-
-  selectedProjectId: string | null;
-  currentView: ViewMode;
-  riskSettings: RiskSettings;
-  
-  // Admin Managed Lists
-  businessAreas: string[];
-  locations: string[];
-  
-  // Relationship Map
-  businessAreaLocationMap: Record<string, string[]>;
+export interface ExplodedViewBox {
+    id: string;
+    structure_element_id: string;
+    x: number;
+    y: number;
 }
 
-export type Severity = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
-export type Occurrence = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
-export type Detection = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+export interface ProjectDiagram {
+    id: string;
+    projectId: string;
+    title: string;
+    imageUrl?: string;
+    boxes: ExplodedViewBox[];
+}
+
+export type Severity = number;
+export type Occurrence = number;
+export type Detection = number;
