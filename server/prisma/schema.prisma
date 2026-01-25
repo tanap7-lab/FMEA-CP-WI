@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  project_id        String             @id
+  part_number       String
+  part_name         String
+  revision_level    String
+  core_team_members String
+  process_id        String?
+  customer          String?
+  product           String?
+  business_area     String?
+  location          String?
+  dfmeaItems        DfmeaItem[]
+  pfmeaItems        PfmeaItem[]
+  structureElements StructureElement[]
+  diagrams          Diagram[]
+}
+
+model StructureElement {
+  element_id        String      @id
+  project_id        String
+  element_title     String
+  description       String?
+  specification     String?
+  category          String?
+  parent_element_id String?
+  dfmeaItems        DfmeaItem[]
+  diagramBoxes      DiagramBox[]
+  project           Project     @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
+}
+
+model DfmeaItem {
+  dfmea_id                  String           @id
+  project_id                String
+  structure_element_id      String
+  item_function             String
+  requirement               String
+  failure_mode              String
+  effect_of_failure         String
+  severity_score            Int
+  classification            String?
+  potential_cause           String
+  occurrence_score          Int
+  design_control_prevention String
+  design_control_detection  String
+  detection_score           Int
+  rpn                       Int
+  linked_parent_failure_id  String?
+  linked_child_failure_id   String?
+  failure_mode_id           String?
+  structureElement          StructureElement @relation(fields: [structure_element_id], references: [element_id], onDelete: Cascade)
+  project                   Project          @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
+  pfmeaItems                PfmeaItem[]
+}
+
+model PfmeaItem {
+  pfmea_id               String            @id
+  project_id             String
+  linked_dfmea_id        String?
+  process_step_number    Int
+  process_function       String
+  process_requirement    String
+  process_specifications String?
+  failure_mode           String
+  failure_cause          String
+  prevention_control     String
+  detection_control      String
+  occurrence_score       Int
+  detection_score        Int
+  controlPlanItems       ControlPlanItem[]
+  dfmeaItem              DfmeaItem?        @relation(fields: [linked_dfmea_id], references: [dfmea_id])
+  project                Project           @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
+}
+
+model ControlPlanItem {
+  cp_id                   String    @id
+  pfmea_link_id           String
+  part_process_number     String?
+  product_characteristic  String?
+  process_characteristic  String?
+  special_char_class      String?
+  specification_tolerance String?
+  evaluation_technique    String?
+  sample_size             String?
+  sample_freq             String?
+  control_method          String?
+  reaction_plan           String?
+  pfmeaItem               PfmeaItem @relation(fields: [pfmea_link_id], references: [pfmea_id], onDelete: Cascade)
+}
+
+model WorkInstruction {
+  wi_id         String  @id
+  linked_cp_id  String?
+  doc_id        String
+  title         String
+  model_variant String
+  steps         String
+}
+
+model Diagram {
+  id        String       @id
+  project_id String
+  title      String
+  imageUrl   String?
+  boxes      DiagramBox[]
+  project    Project @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
+}
+
+model DiagramBox {
+  id                   String @id
+  diagram_id           String
+  structure_element_id String
+  x                    Float
+  y                    Float
+  diagram              Diagram          @relation(fields: [diagram_id], references: [id], onDelete: Cascade)
+  structureElement     StructureElement @relation(fields: [structure_element_id], references: [element_id], onDelete: Cascade)
+}
