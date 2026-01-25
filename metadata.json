@@ -1,0 +1,5 @@
+{
+  "name": "QualityChain - FMEA Architect",
+  "description": "A comprehensive Quality Engineering database visualization tool implementing the AIAG-VDA standard for DFMEA, PFMEA, and Control Plans with Golden Thread traceability.",
+  "requestFramePermissions": []
+}
