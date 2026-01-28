@@ -112,7 +112,9 @@ app.get('/api/structure', async (req, res) => {
 // DFMEA
 app.get('/api/dfmea', async (req, res) => {
     try {
-        const items = await prisma.dfmeaItem.findMany();
+        const items = await prisma.dfmeaItem.findMany({
+            include: { optimizationActions: true }
+        });
         res.json(items);
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch DFMEA items' });
@@ -122,7 +124,9 @@ app.get('/api/dfmea', async (req, res) => {
 // PFMEA
 app.get('/api/pfmea', async (req, res) => {
     try {
-        const items = await prisma.pfmeaItem.findMany();
+        const items = await prisma.pfmeaItem.findMany({
+            include: { optimizationActions: true }
+        });
         // Parse JSON strings
         const formattedItems = items.map(p => ({
             ...p,
@@ -179,22 +183,26 @@ app.delete('/api/structure/:id', async (req, res) => {
 // --- DFMEA ---
 app.post('/api/dfmea', async (req, res) => {
     try {
-        const newItem = await prisma.dfmeaItem.create({ data: req.body });
+        const { optimizationActions, ...data } = req.body; // Strip relational field
+        const newItem = await prisma.dfmeaItem.create({ data });
         res.json(newItem);
     } catch (error) {
-        res.status(500).json({ error: 'Failed to create DFMEA item' });
+        console.error("DFMEA POST Error:", error);
+        res.status(500).json({ error: 'Failed to create DFMEA item', details: (error as Error).message });
     }
 });
 
 app.put('/api/dfmea/:id', async (req, res) => {
     try {
+        const { optimizationActions, ...data } = req.body;
         const updatedItem = await prisma.dfmeaItem.update({
             where: { dfmea_id: req.params.id },
-            data: req.body
+            data
         });
         res.json(updatedItem);
     } catch (error) {
-        res.status(500).json({ error: 'Failed to update DFMEA item' });
+        console.error("DFMEA PUT Error:", error);
+        res.status(500).json({ error: 'Failed to update DFMEA item', details: (error as Error).message });
     }
 });
 
@@ -207,24 +215,96 @@ app.delete('/api/dfmea/:id', async (req, res) => {
     }
 });
 
+// --- Optimization Actions ---
+app.get('/api/optimization-actions/:id', async (req, res) => {
+    try {
+        const actions = await prisma.optimizationAction.findMany({
+            where: {
+                OR: [
+                    { dfmea_id: req.params.id },
+                    { pfmea_id: req.params.id }
+                ]
+            }
+        });
+        const formatted = actions.map((a: any) => ({
+            ...a,
+            history: a.history ? JSON.parse(a.history) : []
+        }));
+        res.json(formatted);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch optimization actions' });
+    }
+});
+
+app.post('/api/optimization-actions', async (req, res) => {
+    try {
+        const data = { ...req.body };
+        if (data.history) data.history = JSON.stringify(data.history);
+        const newAction = await prisma.optimizationAction.create({
+            data
+        });
+        const formatted = {
+            ...(newAction as any),
+            history: (newAction as any).history ? JSON.parse((newAction as any).history) : []
+        };
+        res.json(formatted);
+    } catch (error) {
+        console.error("Failed to create optimization action", error);
+        res.status(500).json({ error: 'Failed to create optimization action', details: (error as any).message });
+    }
+});
+
+app.put('/api/optimization-actions/:id', async (req, res) => {
+    try {
+        const data = { ...req.body };
+        if (data.history) data.history = JSON.stringify(data.history);
+        const updatedAction = await prisma.optimizationAction.update({
+            where: { id: req.params.id },
+            data
+        });
+        const formatted = {
+            ...(updatedAction as any),
+            history: (updatedAction as any).history ? JSON.parse((updatedAction as any).history) : []
+        };
+        res.json(formatted);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to update optimization action' });
+    }
+});
+
+app.delete('/api/optimization-actions/:id', async (req, res) => {
+    try {
+        await prisma.optimizationAction.delete({
+            where: { id: req.params.id }
+        });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to delete optimization action' });
+    }
+});
+
 // --- PFMEA ---
 app.post('/api/pfmea', async (req, res) => {
     try {
-        const data = { ...req.body };
+        const { dfmeaItem, controlPlanItems, ...data } = req.body;
         if (data.process_specifications) {
             data.process_specifications = JSON.stringify(data.process_specifications);
         }
         const newItem = await prisma.pfmeaItem.create({ data });
-        res.json(newItem);
+        const formatted = {
+            ...newItem,
+            process_specifications: newItem.process_specifications ? JSON.parse(newItem.process_specifications) : []
+        };
+        res.json(formatted);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Failed to create PFMEA item' });
+        console.error("PFMEA POST Error:", error);
+        res.status(500).json({ error: 'Failed to create PFMEA item', details: (error as Error).message });
     }
 });
 
 app.put('/api/pfmea/:id', async (req, res) => {
     try {
-        const data = { ...req.body };
+        const { dfmeaItem, controlPlanItems, ...data } = req.body;
         if (data.process_specifications) {
             data.process_specifications = JSON.stringify(data.process_specifications);
         }
@@ -232,9 +312,14 @@ app.put('/api/pfmea/:id', async (req, res) => {
             where: { pfmea_id: req.params.id },
             data
         });
-        res.json(updatedItem);
+        const formatted = {
+            ...updatedItem,
+            process_specifications: updatedItem.process_specifications ? JSON.parse(updatedItem.process_specifications) : []
+        };
+        res.json(formatted);
     } catch (error) {
-        res.status(500).json({ error: 'Failed to update PFMEA item' });
+        console.error("PFMEA PUT Error:", error);
+        res.status(500).json({ error: 'Failed to update PFMEA item', details: (error as Error).message });
     }
 });
 
@@ -250,22 +335,26 @@ app.delete('/api/pfmea/:id', async (req, res) => {
 // --- Control Plan ---
 app.post('/api/control-plan', async (req, res) => {
     try {
-        const newItem = await prisma.controlPlanItem.create({ data: req.body });
+        const { pfmeaItem, ...data } = req.body;
+        const newItem = await prisma.controlPlanItem.create({ data });
         res.json(newItem);
     } catch (error) {
-        res.status(500).json({ error: 'Failed to create Control Plan item' });
+        console.error("CP POST Error:", error);
+        res.status(500).json({ error: 'Failed to create Control Plan item', details: (error as Error).message });
     }
 });
 
 app.put('/api/control-plan/:id', async (req, res) => {
     try {
+        const { pfmeaItem, ...data } = req.body;
         const updatedItem = await prisma.controlPlanItem.update({
             where: { cp_id: req.params.id },
-            data: req.body
+            data
         });
         res.json(updatedItem);
     } catch (error) {
-        res.status(500).json({ error: 'Failed to update Control Plan item' });
+        console.error("CP PUT Error:", error);
+        res.status(500).json({ error: 'Failed to update Control Plan item', details: (error as Error).message });
     }
 });
 
@@ -299,7 +388,11 @@ app.post('/api/work-instructions', async (req, res) => {
         const data = { ...req.body };
         if (data.steps) data.steps = JSON.stringify(data.steps);
         const newItem = await prisma.workInstruction.create({ data });
-        res.json(newItem);
+        const formatted = {
+            ...newItem,
+            steps: newItem.steps ? JSON.parse(newItem.steps) : []
+        };
+        res.json(formatted);
     } catch (error) {
         res.status(500).json({ error: 'Failed to create Work Instruction' });
     }
@@ -313,9 +406,22 @@ app.put('/api/work-instructions/:id', async (req, res) => {
             where: { wi_id: req.params.id },
             data
         });
-        res.json(updatedItem);
+        const formatted = {
+            ...updatedItem,
+            steps: updatedItem.steps ? JSON.parse(updatedItem.steps) : []
+        };
+        res.json(formatted);
     } catch (error) {
         res.status(500).json({ error: 'Failed to update Work Instruction' });
+    }
+});
+
+app.delete('/api/work-instructions/:id', async (req, res) => {
+    try {
+        await prisma.workInstruction.delete({ where: { wi_id: req.params.id } });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to delete Work Instruction' });
     }
 });
 

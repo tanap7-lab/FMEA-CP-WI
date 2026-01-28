@@ -123,6 +123,39 @@ export const api = {
         return response.json();
     },
 
+    // Optimization Actions
+    getOptimizationActions: async (dfmeaId: string) => {
+        const response = await fetch(`${API_BASE_URL}/optimization-actions/${dfmeaId}`);
+        if (!response.ok) throw new Error('Failed to fetch optimization actions');
+        return response.json();
+    },
+    createOptimizationAction: async (data: any) => {
+        const response = await fetch(`${API_BASE_URL}/optimization-actions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.details || errorData.error || 'Failed to create optimization action');
+        }
+        return response.json();
+    },
+    updateOptimizationAction: async (id: string, data: any) => {
+        const response = await fetch(`${API_BASE_URL}/optimization-actions/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) throw new Error('Failed to update optimization action');
+        return response.json();
+    },
+    deleteOptimizationAction: async (id: string) => {
+        const response = await fetch(`${API_BASE_URL}/optimization-actions/${id}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete optimization action');
+        return response.json();
+    },
+
     // PFMEA
     createPfmeaItem: async (data: any) => {
         const response = await fetch(`${API_BASE_URL}/pfmea`, {
@@ -148,7 +181,41 @@ export const api = {
         return response.json();
     },
 
+    // Control Plan
+    createControlPlanItem: async (data: any) => {
+        const response = await fetch(`${API_BASE_URL}/control-plan`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) throw new Error('Failed to create Control Plan item');
+        return response.json();
+    },
+    updateControlPlanItem: async (id: string, data: any) => {
+        const response = await fetch(`${API_BASE_URL}/control-plan/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) throw new Error('Failed to update Control Plan item');
+        return response.json();
+    },
+    deleteControlPlanItem: async (id: string) => {
+        const response = await fetch(`${API_BASE_URL}/control-plan/${id}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete Control Plan item');
+        return response.json();
+    },
+
     // Work Instructions
+    createWorkInstruction: async (data: any) => {
+        const response = await fetch(`${API_BASE_URL}/work-instructions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) throw new Error('Failed to create Work Instruction');
+        return response.json();
+    },
     updateWorkInstruction: async (id: string, data: any) => {
         const response = await fetch(`${API_BASE_URL}/work-instructions/${id}`, {
             method: 'PUT',
@@ -156,6 +223,11 @@ export const api = {
             body: JSON.stringify(data)
         });
         if (!response.ok) throw new Error('Failed to update Work Instruction');
+        return response.json();
+    },
+    deleteWorkInstruction: async (id: string) => {
+        const response = await fetch(`${API_BASE_URL}/work-instructions/${id}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete Work Instruction');
         return response.json();
     },
 

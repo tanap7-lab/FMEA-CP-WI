@@ -59,6 +59,25 @@ model DfmeaItem {
   structureElement          StructureElement @relation(fields: [structure_element_id], references: [element_id], onDelete: Cascade)
   project                   Project          @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
   pfmeaItems                PfmeaItem[]
+  optimizationActions       OptimizationAction[]
+}
+
+model OptimizationAction {
+  id                 String     @id
+  dfmea_id           String?
+  pfmea_id           String?
+  preventive_measure String
+  detection_measure  String
+  responsible_owner  String
+  due_date           String
+  status             String
+  new_severity       Int?
+  new_occurrence     Int?
+  new_detection      Int?
+  comment            String?
+  history            String?
+  dfmeaItem          DfmeaItem?  @relation(fields: [dfmea_id], references: [dfmea_id], onDelete: Cascade)
+  pfmeaItem          PfmeaItem?  @relation(fields: [pfmea_id], references: [pfmea_id], onDelete: Cascade)
 }
 
 model PfmeaItem {
@@ -75,7 +94,11 @@ model PfmeaItem {
   detection_control      String
   occurrence_score       Int
   detection_score        Int
+  image_url              String?
+  special_characteristic String?
+  four_m_label           String?
   controlPlanItems       ControlPlanItem[]
+  optimizationActions    OptimizationAction[]
   dfmeaItem              DfmeaItem?        @relation(fields: [linked_dfmea_id], references: [dfmea_id])
   project                Project           @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
 }
@@ -93,6 +116,7 @@ model ControlPlanItem {
   sample_freq             String?
   control_method          String?
   reaction_plan           String?
+  linked_wi_id            String?
   pfmeaItem               PfmeaItem @relation(fields: [pfmea_link_id], references: [pfmea_id], onDelete: Cascade)
 }
 

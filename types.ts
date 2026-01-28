@@ -1,5 +1,5 @@
 
-export type ViewMode = 'DASHBOARD' | 'DFMEA' | 'PFMEA' | 'CONTROL_PLAN' | 'WORK_INSTRUCTIONS' | 'TRACEABILITY' | 'PROJECT_SETTINGS' | 'ADMIN';
+export type ViewMode = 'DASHBOARD' | 'DFMEA' | 'PFMEA' | 'SPECIAL_CHARACTERISTICS' | 'CONTROL_PLAN' | 'WORK_INSTRUCTIONS' | 'TRACEABILITY' | 'OPTIMIZATION' | 'PROJECT_SETTINGS' | 'ADMIN';
 
 export interface ProjectMaster {
   project_id: string;
@@ -43,6 +43,33 @@ export interface DfmeaItem {
   linked_parent_failure_id?: string;
   linked_child_failure_id?: string;
   failure_mode_id?: string;
+  optimizationActions?: OptimizationAction[];
+}
+
+export interface ActionLog {
+  id: string;
+  timestamp: string;
+  user: string;
+  action: 'Created' | 'Status Changed' | 'Comment Added' | 'Deadline Changed' | 'Assessment Updated';
+  comment: string;
+  before?: string;
+  after?: string;
+}
+
+export interface OptimizationAction {
+  id: string;
+  dfmea_id?: string;
+  pfmea_id?: string;
+  preventive_measure: string;
+  detection_measure: string;
+  responsible_owner: string;
+  due_date: string;
+  status: 'Open' | 'Closed' | 'Cancelled';
+  new_severity?: number;
+  new_occurrence?: number;
+  new_detection?: number;
+  comment?: string;
+  history?: ActionLog[];
 }
 
 export interface PfmeaItem {
@@ -59,6 +86,10 @@ export interface PfmeaItem {
   detection_control: string;
   occurrence_score: number;
   detection_score: number;
+  image_url?: string;
+  special_characteristic?: 'In-process' | 'Component' | 'None';
+  four_m_label?: string;
+  optimizationActions?: OptimizationAction[];
 }
 
 export interface ControlPlanItem {
@@ -74,78 +105,79 @@ export interface ControlPlanItem {
   sample_freq?: string;
   control_method?: string;
   reaction_plan?: string;
+  linked_wi_id?: string;
 }
 
 export interface ImageOverlay {
-    id: string;
-    type: 'box' | 'circle' | 'arrow' | 'label';
-    x: number;
-    y: number;
-    width?: number;
-    height?: number;
-    x2?: number;
-    y2?: number;
-    text?: string;
-    color?: string;
+  id: string;
+  type: 'box' | 'circle' | 'arrow' | 'label';
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  x2?: number;
+  y2?: number;
+  text?: string;
+  color?: string;
 }
 
 export interface WorkInstructionStep {
-    step_number: number;
-    title: string;
-    image_url?: string;
-    sub_steps: string[];
-    overlays?: ImageOverlay[];
-    warning_alert?: { type: string; message: string; };
-    tool_specs?: Array<{ tool_type: string; value: number | string; unit: string; }>;
+  step_number: number;
+  title: string;
+  image_url?: string;
+  sub_steps: string[];
+  overlays?: ImageOverlay[];
+  warning_alert?: { type: string; message: string; };
+  tool_specs?: Array<{ tool_type: string; value: number | string; unit: string; }>;
 }
 
 export interface WorkInstruction {
-    wi_id: string;
-    linked_cp_id?: string;
-    doc_id: string;
-    title: string;
-    model_variant: string;
-    steps: WorkInstructionStep[];
+  wi_id: string;
+  linked_cp_id?: string;
+  doc_id: string;
+  title: string;
+  model_variant: string;
+  steps: WorkInstructionStep[];
 }
 
 export interface ApRule {
-    id: string;
-    sMin: number;
-    sMax: number;
-    oMin: number;
-    oMax: number;
-    dMin: number;
-    dMax: number;
-    result: 'H' | 'M' | 'L';
+  id: string;
+  sMin: number;
+  sMax: number;
+  oMin: number;
+  oMax: number;
+  dMin: number;
+  dMax: number;
+  result: 'H' | 'M' | 'L';
 }
 
 export type RiskMethod = 'RPN' | 'AP';
 
 export interface RiskSettings {
-    method: RiskMethod;
-    rpnThresholds: { medium: number, high: number };
-    apLogic: ApRule[];
-    definitions: {
-        severity: Record<number, string>;
-        occurrence: Record<number, string>;
-        detection: Record<number, string>;
-        ap: Record<string, string>;
-    }
+  method: RiskMethod;
+  rpnThresholds: { medium: number, high: number };
+  apLogic: ApRule[];
+  definitions: {
+    severity: Record<number, string>;
+    occurrence: Record<number, string>;
+    detection: Record<number, string>;
+    ap: Record<string, string>;
+  }
 }
 
 export interface ExplodedViewBox {
-    id: string;
-    structure_element_id: string;
-    x: number;
-    y: number;
+  id: string;
+  structure_element_id: string;
+  x: number;
+  y: number;
 }
 
 export interface ProjectDiagram {
-    id: string;
-    projectId: string;
-    title: string;
-    imageUrl?: string;
-    boxes: ExplodedViewBox[];
+  id: string;
+  projectId: string;
+  title: string;
+  imageUrl?: string;
+  boxes: ExplodedViewBox[];
 }
 
 export type Severity = number;

@@ -3,27 +3,27 @@
 import { ProjectMaster, DfmeaItem, PfmeaItem, ControlPlanItem, StructureElement, RiskSettings, ApRule, WorkInstruction } from './types';
 
 export const MOCK_BUSINESS_AREAS = [
-    "Automotive - Powertrain",
-    "Automotive - Chassis",
-    "Automotive - Electronics",
-    "Aerospace",
-    "Industrial"
+  "Automotive - Powertrain",
+  "Automotive - Chassis",
+  "Automotive - Electronics",
+  "Aerospace",
+  "Industrial"
 ];
 
 export const MOCK_LOCATIONS = [
-    "Detroit, MI (USA)",
-    "Stuttgart (DE)",
-    "Shanghai (CN)",
-    "Puebla (MX)",
-    "Tokyo (JP)"
+  "Detroit, MI (USA)",
+  "Stuttgart (DE)",
+  "Shanghai (CN)",
+  "Puebla (MX)",
+  "Tokyo (JP)"
 ];
 
 export const MOCK_BUSINESS_AREA_LOCATION_MAP: Record<string, string[]> = {
-    "Automotive - Powertrain": ["Stuttgart (DE)", "Detroit, MI (USA)", "Shanghai (CN)"],
-    "Automotive - Chassis": ["Detroit, MI (USA)", "Puebla (MX)", "Tokyo (JP)"],
-    "Automotive - Electronics": ["Shanghai (CN)", "Tokyo (JP)", "Stuttgart (DE)"],
-    "Aerospace": ["Detroit, MI (USA)", "Stuttgart (DE)"],
-    "Industrial": ["Detroit, MI (USA)", "Stuttgart (DE)", "Shanghai (CN)", "Puebla (MX)", "Tokyo (JP)"]
+  "Automotive - Powertrain": ["Stuttgart (DE)", "Detroit, MI (USA)", "Shanghai (CN)"],
+  "Automotive - Chassis": ["Detroit, MI (USA)", "Puebla (MX)", "Tokyo (JP)"],
+  "Automotive - Electronics": ["Shanghai (CN)", "Tokyo (JP)", "Stuttgart (DE)"],
+  "Aerospace": ["Detroit, MI (USA)", "Stuttgart (DE)"],
+  "Industrial": ["Detroit, MI (USA)", "Stuttgart (DE)", "Shanghai (CN)", "Puebla (MX)", "Tokyo (JP)"]
 };
 
 // Initial Mock Data
@@ -152,7 +152,10 @@ export const MOCK_DFMEA: DfmeaItem[] = [
     design_control_prevention: "FEA Simulation",
     design_control_detection: "Burst testing validation",
     detection_score: 3,
-    rpn: 90
+    rpn: 90,
+    optimizationActions: [
+      { id: 'ACT-001', dfmea_id: 'DF-001', preventive_measure: 'Increase wall thickness to 5mm', detection_measure: 'Burst test', responsible_owner: 'Alice Eng', due_date: '2024-06-01', status: 'Open' }
+    ]
   },
   {
     dfmea_id: "DF-002",
@@ -169,7 +172,10 @@ export const MOCK_DFMEA: DfmeaItem[] = [
     design_control_prevention: "Material selection",
     design_control_detection: "Prototype measurement",
     detection_score: 4,
-    rpn: 112
+    rpn: 112,
+    optimizationActions: [
+      { id: 'ACT-002', dfmea_id: 'DF-002', preventive_measure: 'Switch to GJS-700 material', detection_measure: 'Thermal cycle test', responsible_owner: 'Bob Mfg', due_date: '2024-05-15', status: 'Closed' }
+    ]
   },
   {
     dfmea_id: "DF-003",
@@ -272,7 +278,10 @@ export const MOCK_PFMEA: PfmeaItem[] = [
     prevention_control: "Automated mold temp controller",
     detection_control: "X-Ray Inspection",
     occurrence_score: 3,
-    detection_score: 2
+    detection_score: 2,
+    optimizationActions: [
+      { id: 'ACT-P001', dfmea_id: 'PF-001', preventive_measure: 'Add real-time pressure sensor to mold', detection_measure: 'Internal pressure validation', responsible_owner: 'Charlie Quality', due_date: '2024-07-01', status: 'Open' }
+    ]
   },
   {
     pfmea_id: "PF-002",
@@ -407,123 +416,123 @@ export const MOCK_CONTROL_PLAN: ControlPlanItem[] = [
 ];
 
 export const MOCK_WORK_INSTRUCTIONS: WorkInstruction[] = [
-    {
-        wi_id: "WI-001",
-        linked_cp_id: "CP-002", // Linked to Mounting Face Flatness for demo
-        doc_id: "EWI-001",
-        title: "Front Door Panel Installation",
-        model_variant: "Model X",
-        steps: [
-            {
-                step_number: 1,
-                title: "PREPARATION & ALIGNMENT",
-                image_url: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Tesla_Model_S_door_handles.jpg/640px-Tesla_Model_S_door_handles.jpg", 
-                overlays: [
-                    { id: 'ov1', type: 'box', x: 20, y: 30, width: 60, height: 40, text: 'Inspect Area', color: '#3b82f6' },
-                    { id: 'ov2', type: 'arrow', x: 10, y: 10, x2: 25, y2: 30, color: '#ef4444' }
-                ],
-                sub_steps: [
-                    "1.1 Inspect panel clips.",
-                    "1.2 Align panel clips with frame holes."
-                ]
-            },
-            {
-                step_number: 2,
-                title: "WIRING HARNESS CONNECTION",
-                image_url: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/OBD-II-Stecker-Belegung.jpg/640px-OBD-II-Stecker-Belegung.jpg",
-                overlays: [
-                    { id: 'ov3', type: 'circle', x: 35, y: 25, width: 30, height: 50, color: '#eab308' },
-                    { id: 'ov4', type: 'label', x: 80, y: 20, text: 'Pin Check', color: '#10b981' }
-                ],
-                sub_steps: [
-                    "2.1 Connect main wiring harness until it clicks.",
-                    "2.2 Secure harness in clip."
-                ],
-                warning_alert: {
-                    type: "warning",
-                    message: "Ensure secure connection."
-                }
-            },
-            {
-                step_number: 3,
-                title: "FASTENING & TORQUE",
-                image_url: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Cordless_Impact_Driver.jpg/640px-Cordless_Impact_Driver.jpg", 
-                sub_steps: [
-                    "3.1 Apply 3 fasteners to designated locations.",
-                    "3.2 Torque all fasteners to 5 Nm."
-                ],
-                tool_specs: [
-                    { value: 5, unit: "Nm", tool_type: "Torque Wrench" }
-                ]
-            }
+  {
+    wi_id: "WI-001",
+    linked_cp_id: "CP-002", // Linked to Mounting Face Flatness for demo
+    doc_id: "EWI-001",
+    title: "Front Door Panel Installation",
+    model_variant: "Model X",
+    steps: [
+      {
+        step_number: 1,
+        title: "PREPARATION & ALIGNMENT",
+        image_url: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Tesla_Model_S_door_handles.jpg/640px-Tesla_Model_S_door_handles.jpg",
+        overlays: [
+          { id: 'ov1', type: 'box', x: 20, y: 30, width: 60, height: 40, text: 'Inspect Area', color: '#3b82f6' },
+          { id: 'ov2', type: 'arrow', x: 10, y: 10, x2: 25, y2: 30, color: '#ef4444' }
+        ],
+        sub_steps: [
+          "1.1 Inspect panel clips.",
+          "1.2 Align panel clips with frame holes."
         ]
-    }
+      },
+      {
+        step_number: 2,
+        title: "WIRING HARNESS CONNECTION",
+        image_url: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/OBD-II-Stecker-Belegung.jpg/640px-OBD-II-Stecker-Belegung.jpg",
+        overlays: [
+          { id: 'ov3', type: 'circle', x: 35, y: 25, width: 30, height: 50, color: '#eab308' },
+          { id: 'ov4', type: 'label', x: 80, y: 20, text: 'Pin Check', color: '#10b981' }
+        ],
+        sub_steps: [
+          "2.1 Connect main wiring harness until it clicks.",
+          "2.2 Secure harness in clip."
+        ],
+        warning_alert: {
+          type: "warning",
+          message: "Ensure secure connection."
+        }
+      },
+      {
+        step_number: 3,
+        title: "FASTENING & TORQUE",
+        image_url: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Cordless_Impact_Driver.jpg/640px-Cordless_Impact_Driver.jpg",
+        sub_steps: [
+          "3.1 Apply 3 fasteners to designated locations.",
+          "3.2 Torque all fasteners to 5 Nm."
+        ],
+        tool_specs: [
+          { value: 5, unit: "Nm", tool_type: "Torque Wrench" }
+        ]
+      }
+    ]
+  }
 ];
 
 export const DEFAULT_AP_RULES: ApRule[] = [
-    // Simplified Logic roughly matching AIAG-VDA high-level logic for demo
-    // Priority order matters! First match wins.
-    
-    // Very High Severity often leads to High Priority
-    { id: 'R1', sMin: 9, sMax: 10, oMin: 1, oMax: 10, dMin: 1, dMax: 10, result: 'H' },
-    
-    // High Severity with moderate Occurrence OR Detection
-    { id: 'R2', sMin: 7, sMax: 8, oMin: 4, oMax: 10, dMin: 1, dMax: 10, result: 'H' },
-    { id: 'R3', sMin: 7, sMax: 8, oMin: 1, oMax: 10, dMin: 4, dMax: 10, result: 'H' },
-    
-    // Moderate Severity
-    { id: 'R4', sMin: 4, sMax: 6, oMin: 6, oMax: 10, dMin: 6, dMax: 10, result: 'M' },
-    { id: 'R5', sMin: 7, sMax: 8, oMin: 1, oMax: 3, dMin: 1, dMax: 3, result: 'M' },
-    
-    // Everything else defaults to Low via code fallback, but here are some specific M rules
-    { id: 'R6', sMin: 4, sMax: 6, oMin: 4, oMax: 10, dMin: 1, dMax: 10, result: 'L' } // Just an example, real table is more complex
+  // Simplified Logic roughly matching AIAG-VDA high-level logic for demo
+  // Priority order matters! First match wins.
+
+  // Very High Severity often leads to High Priority
+  { id: 'R1', sMin: 9, sMax: 10, oMin: 1, oMax: 10, dMin: 1, dMax: 10, result: 'H' },
+
+  // High Severity with moderate Occurrence OR Detection
+  { id: 'R2', sMin: 7, sMax: 8, oMin: 4, oMax: 10, dMin: 1, dMax: 10, result: 'H' },
+  { id: 'R3', sMin: 7, sMax: 8, oMin: 1, oMax: 10, dMin: 4, dMax: 10, result: 'H' },
+
+  // Moderate Severity
+  { id: 'R4', sMin: 4, sMax: 6, oMin: 6, oMax: 10, dMin: 6, dMax: 10, result: 'M' },
+  { id: 'R5', sMin: 7, sMax: 8, oMin: 1, oMax: 3, dMin: 1, dMax: 3, result: 'M' },
+
+  // Everything else defaults to Low via code fallback, but here are some specific M rules
+  { id: 'R6', sMin: 4, sMax: 6, oMin: 4, oMax: 10, dMin: 1, dMax: 10, result: 'L' } // Just an example, real table is more complex
 ];
 
 export const DEFAULT_RISK_SETTINGS: RiskSettings = {
-    method: 'RPN',
-    rpnThresholds: { medium: 100, high: 200 },
-    apLogic: DEFAULT_AP_RULES,
-    definitions: {
-        severity: {
-            10: "Hazardous without warning. Safety Impact.",
-            9: "Hazardous with warning. Safety Impact.",
-            8: "Loss of primary function. Car inoperable.",
-            7: "Reduced primary function. Repair needed.",
-            6: "Loss of secondary function (Comfort/Convenience).",
-            5: "Reduced secondary function.",
-            4: "Minor annoyance. Noticed by most.",
-            3: "Minor annoyance. Noticed by average driver.",
-            2: "Minor annoyance. Noticed by discerning driver.",
-            1: "No discernible effect."
-        },
-        occurrence: {
-            10: "Extremely High: ≥ 1 in 10. Almost certain.",
-            9: "Very High: 1 in 20. Frequent failures.",
-            8: "High: 1 in 50.",
-            7: "Moderately High: 1 in 100.",
-            6: "Moderate: 1 in 500.",
-            5: "Low: 1 in 2,000.",
-            4: "Very Low: 1 in 10,000.",
-            3: "Remote: 1 in 100,000.",
-            2: "Extremely Remote: 1 in 1,000,000.",
-            1: "Probability of Failure is eliminated."
-        },
-        detection: {
-            10: "Absolute Uncertainty. No control exists.",
-            9: "Very Remote. Controls will likely not detect.",
-            8: "Remote. Poor chance of detection.",
-            7: "Very Low. Controls might detect.",
-            6: "Low. Controls may detect.",
-            5: "Moderate. Controls likely to detect.",
-            4: "Moderately High. Good chance of detection.",
-            3: "High. Controls have high chance of detection.",
-            2: "Very High. Almost certain detection.",
-            1: "Almost Certain. Defect is prevented/detected."
-        },
-        ap: {
-            H: "Must Act",
-            M: "Should Act",
-            L: "Acceptable"
-        }
+  method: 'RPN',
+  rpnThresholds: { medium: 100, high: 200 },
+  apLogic: DEFAULT_AP_RULES,
+  definitions: {
+    severity: {
+      10: "Hazardous without warning. Safety Impact.",
+      9: "Hazardous with warning. Safety Impact.",
+      8: "Loss of primary function. Car inoperable.",
+      7: "Reduced primary function. Repair needed.",
+      6: "Loss of secondary function (Comfort/Convenience).",
+      5: "Reduced secondary function.",
+      4: "Minor annoyance. Noticed by most.",
+      3: "Minor annoyance. Noticed by average driver.",
+      2: "Minor annoyance. Noticed by discerning driver.",
+      1: "No discernible effect."
+    },
+    occurrence: {
+      10: "Extremely High: ≥ 1 in 10. Almost certain.",
+      9: "Very High: 1 in 20. Frequent failures.",
+      8: "High: 1 in 50.",
+      7: "Moderately High: 1 in 100.",
+      6: "Moderate: 1 in 500.",
+      5: "Low: 1 in 2,000.",
+      4: "Very Low: 1 in 10,000.",
+      3: "Remote: 1 in 100,000.",
+      2: "Extremely Remote: 1 in 1,000,000.",
+      1: "Probability of Failure is eliminated."
+    },
+    detection: {
+      10: "Absolute Uncertainty. No control exists.",
+      9: "Very Remote. Controls will likely not detect.",
+      8: "Remote. Poor chance of detection.",
+      7: "Very Low. Controls might detect.",
+      6: "Low. Controls may detect.",
+      5: "Moderate. Controls likely to detect.",
+      4: "Moderately High. Good chance of detection.",
+      3: "High. Controls have high chance of detection.",
+      2: "Very High. Almost certain detection.",
+      1: "Almost Certain. Defect is prevented/detected."
+    },
+    ap: {
+      H: "Must Act",
+      M: "Should Act",
+      L: "Acceptable"
     }
+  }
 }

@@ -40,7 +40,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
     onAddSuggestedElements,
     onSelectElement
 }) => {
-    const [isVisible, setIsVisible] = useState(true);
+    const [isVisible, setIsVisible] = useState(false);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
     const [tempTitle, setTempTitle] = useState('');
@@ -149,18 +149,22 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
             });
 
             if (result.text) {
+                console.log("AI Raw Text:", result.text);
                 const cleanedText = result.text.replace(/```json\n?|\n?```/g, '').trim();
+                console.log("AI Cleaned Text:", cleanedText);
                 const rawSuggestions = JSON.parse(cleanedText);
+                console.log("AI Parsed Suggestions:", rawSuggestions);
 
                 // Robust mapping to ensure element_title exists
                 const suggestions = Array.isArray(rawSuggestions) ? rawSuggestions.map((item: any) => ({
                     ...item,
-                    element_title: item.element_title || item.title || item.name || 'AI Detected Element',
+                    element_title: item.element_title || item.elementTitle || item.title || item.name || 'AI Detected Element',
                     description: item.description || 'No description provided',
                     category: item.category || 'Component',
                     specification: item.specification || ''
                 })) : [];
 
+                console.log("AI Final Mapped Suggestions:", suggestions);
                 onAddSuggestedElements(suggestions);
             }
         } catch (e: any) {
@@ -192,7 +196,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                 <div>
                     <h3 className="font-bold text-indigo-900 flex items-center">
                         <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                        Exploded View Diagrams
+                        Architecture
                     </h3>
                     <p className="text-xs text-indigo-600">Map structure elements to visual diagrams</p>
                 </div>
@@ -209,7 +213,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                         onClick={() => setIsVisible(!isVisible)}
                         className="bg-white border border-indigo-200 text-indigo-600 px-3 py-1 rounded text-xs font-medium hover:bg-indigo-50"
                     >
-                        {isVisible ? 'Hide Diagrams' : 'Show Diagrams'}
+                        {isVisible ? 'Hide Architecture' : 'Show Architecture'}
                     </button>
                 </div>
             </div>
